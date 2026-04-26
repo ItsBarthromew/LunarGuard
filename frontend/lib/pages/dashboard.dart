@@ -12,6 +12,9 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
+  final ScrollController _liveLogsScrollController = ScrollController();
+  int _lastLiveLogCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -19,7 +22,17 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   void dispose() {
+    _liveLogsScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollLogsToBottom() {
+    if (!_liveLogsScrollController.hasClients) return;
+    _liveLogsScrollController.animateTo(
+      _liveLogsScrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
   }
 
   String _formatBytes(int bytes) {
@@ -747,6 +760,7 @@ class _DashboardState extends State<Dashboard> {
                     SizedBox(width: 10.w),
                     Column(
                       children: [
+                        //Logs Being Processed
                         Container(
                           width: 272.w,
                           height: 360.h,
@@ -764,7 +778,7 @@ class _DashboardState extends State<Dashboard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'WEB SOCKET STATUS',
+                                  'LIVE LOGS',
                                   style: TextStyle(
                                     fontSize: 14.sp,
                                     height: 0.6.h,
@@ -776,16 +790,22 @@ class _DashboardState extends State<Dashboard> {
                                 Expanded(
                                   child: Consumer<StatusService>(
                                     builder: (context, statusService, child) {
-                                      final currentStatus =
-                                          statusService.currentStatus;
+                                      final logs = statusService.liveLogs;
 
-                                      if (currentStatus == null) {
+                                      if (logs.length != _lastLiveLogCount) {
+                                        _lastLiveLogCount = logs.length;
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          _scrollLogsToBottom();
+                                        });
+                                      }
+
+                                      if (logs.isEmpty) {
                                         return Align(
                                           alignment: Alignment.topLeft,
                                           child: Text(
-                                            'Waiting for websocket stats...',
+                                            'Waiting for live logs...',
                                             style: TextStyle(
-                                              fontSize: 12.sp,
+                                              fontSize: 11.sp,
                                               fontFamily: "Clarendon",
                                               color: greyColor,
                                             ),
@@ -793,57 +813,40 @@ class _DashboardState extends State<Dashboard> {
                                         );
                                       }
 
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            statusService.isRunning
-                                                ? 'CONNECTED'
-                                                : 'DISCONNECTED',
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              height: 0.8.h,
-                                              fontFamily: "ClarendonBold",
-                                              color: statusService.isRunning
-                                                  ? positiveColor
-                                                  : negativeColor,
-                                            ),
-                                          ),
-                                          SizedBox(height: 18.h),
-                                          _statusRow(
-                                            label: 'Bytes sent',
-                                            value: _formatBytes(
-                                              currentStatus.bytesSent,
-                                            ),
-                                          ),
-                                          SizedBox(height: 14.h),
-                                          _statusRow(
-                                            label: 'Bytes received',
-                                            value: _formatBytes(
-                                              currentStatus.bytesReceived,
-                                            ),
-                                          ),
-                                          SizedBox(height: 14.h),
-                                          _statusRow(
-                                            label: 'Last update',
-                                            value:
-                                                '${currentStatus.updatedAt.hour.toString().padLeft(2, '0')}:${currentStatus.updatedAt.minute.toString().padLeft(2, '0')}:${currentStatus.updatedAt.second.toString().padLeft(2, '0')}',
-                                          ),
-                                          if (statusService.errorMessage != null)
-                                            Padding(
-                                              padding:
-                                                  EdgeInsets.only(top: 16.h),
-                                              child: Text(
-                                                statusService.errorMessage!,
-                                                style: TextStyle(
-                                                  fontSize: 10.sp,
-                                                  fontFamily: "Clarendon",
-                                                  color: negativeColor,
-                                                ),
+                                      return ListView.separated(
+                                        controller: _liveLogsScrollController,
+                                        itemCount: logs.length,
+                                        separatorBuilder: (context, index) => SizedBox(height: 8.h),
+                                        itemBuilder: (context, index) {
+                                          final log = logs[index];
+                                          return RichText(
+                                            text: TextSpan(
+                                              style: TextStyle(
+                                                fontSize: 11.sp,
+                                                height: 1.15.h,
+                                                fontFamily: "Clarendon",
+                                                color: onMainColor,
                                               ),
+                                              children: [
+                                                TextSpan(
+                                                  text: '${log.time} ',
+                                                  style: TextStyle(
+                                                    fontFamily: "ClarendonBold",
+                                                    color: greyColor,
+                                                  ),
+                                                ),
+                                                TextSpan(
+                                                  text: '${log.tag} ',
+                                                  style: TextStyle(
+                                                    fontFamily: "ClarendonBold",
+                                                    color: _logTagColor(log.tag),
+                                                  ),
+                                                ),
+                                                TextSpan(text: log.message),
+                                              ],
                                             ),
-                                        ],
+                                          );
+                                        },
                                       );
                                     },
                                   ),
@@ -852,6 +855,9 @@ class _DashboardState extends State<Dashboard> {
                             ),
                           ),
                         ),
+                        
+                        
+                        
                         SizedBox(height: 10.h),
                         Container(
                           height: 260.h,
@@ -859,6 +865,49 @@ class _DashboardState extends State<Dashboard> {
                           decoration: BoxDecoration(
                             color: mainColor,
                             borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 14.w,
+                              vertical: 14.h,
+                            ),
+                            child: Consumer<StatusService>(
+                              builder: (context, statusService, child) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'API ROUTE OUTPUTS',
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        height: 0.6.h,
+                                        fontFamily: "ClarendonBold",
+                                        color: greyColor,
+                                      ),
+                                    ),
+                                    SizedBox(height: 16.h),
+                                    Expanded(
+                                      child: ListView.separated(
+                                        itemCount: statusService.routeOutputs.length,
+                                        separatorBuilder: (context, index) => SizedBox(height: 10.h),
+                                        itemBuilder: (context, index) {
+                                          final entry = statusService.routeOutputs[index];
+                                          return Text(
+                                            entry,
+                                            style: TextStyle(
+                                              fontSize: 10.sp,
+                                              height: 1.15.h,
+                                              fontFamily: "Clarendon",
+                                              color: onMainColor,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ],
@@ -879,60 +928,131 @@ class _DashboardState extends State<Dashboard> {
                     builder: (context, statusService, child) {
                       final cpuValue = statusService.cpuUsage ?? 0.0;
                       final memValue = statusService.memoryUsage ?? 0.0;
+                      final healthCpuValue = statusService.healthCpuAverage ?? cpuValue;
+                      final healthMemValue = statusService.healthMemoryAverage ?? memValue;
 
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _statusDropdown(
-                            context: context,
-                            statusService: statusService,
-                            label: 'MEM',
-                            value: '${memValue.toStringAsFixed(1)}%',
-                            valueColor: memValue > 80 ? negativeColor : positiveColor,
-                            selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
-                                ? positiveColor
-                                : greyColor,
+                      Future<void> openMenu() async {
+                        final renderBox = context.findRenderObject() as RenderBox?;
+                        if (renderBox == null || !renderBox.attached) return;
+
+                        final overlay = Navigator.of(context).overlay?.context.findRenderObject() as RenderBox?;
+                        if (overlay == null || !overlay.attached) return;
+
+                        final topLeft = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+                        final bottomRight = renderBox.localToGlobal(renderBox.size.bottomRight(Offset.zero), ancestor: overlay);
+
+                        final selected = await showMenu<Duration>(
+                          context: context,
+                          color: mainColor,
+                          position: RelativeRect.fromRect(
+                            Rect.fromLTRB(topLeft.dx, topLeft.dy, bottomRight.dx, bottomRight.dy),
+                            Offset.zero & overlay.size,
                           ),
-                          _statusDropdown(
-                            context: context,
-                            statusService: statusService,
-                            label: 'CPU',
-                            value: '${cpuValue.toStringAsFixed(1)}%',
-                            valueColor: cpuValue > 80 ? negativeColor : positiveColor,
-                            selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
-                                ? positiveColor
-                                : greyColor,
-                          ),
-                          _statusDropdown(
-                            context: context,
-                            statusService: statusService,
-                            label: 'STATUS',
-                            value: statusService.isRunning ? 'ONLINE' : 'OFFLINE',
-                            valueColor: statusService.isRunning ? positiveColor : negativeColor,
-                            selectedColor: statusService.isRunning ? positiveColor : negativeColor,
-                            onTapDisabled: true,
-                          ),
-                          _statusDropdown(
-                            context: context,
-                            statusService: statusService,
-                            label: 'HEALTH',
-                            value: _getHealthStatus(cpuValue, memValue),
-                            valueColor: _getHealthColor(cpuValue, memValue),
-                            selectedColor: _getHealthColor(cpuValue, memValue),
-                            onTapDisabled: true,
-                          ),
-                          _statusDropdown(
-                            context: context,
-                            statusService: statusService,
-                            label: 'LATENCY',
-                            value: '${(statusService.currentStatus?.updatedAt.millisecondsSinceEpoch ?? 0) % 100}MS',
-                            valueColor: positiveColor,
-                            selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
-                                ? positiveColor
-                                : greyColor,
-                          ),
-                        ],
+                          items: [
+                            _intervalItem(
+                              context,
+                              interval: const Duration(seconds: 1),
+                              label: '1 Sec',
+                              isSelected: statusService.pollingInterval == const Duration(seconds: 1),
+                            ),
+                            _intervalItem(
+                              context,
+                              interval: const Duration(seconds: 5),
+                              label: '5 Sec',
+                              isSelected: statusService.pollingInterval == const Duration(seconds: 5),
+                            ),
+                            _intervalItem(
+                              context,
+                              interval: const Duration(seconds: 30),
+                              label: '30 Sec (Suggested)',
+                              isSelected: statusService.pollingInterval == const Duration(seconds: 30),
+                            ),
+                            _intervalItem(
+                              context,
+                              interval: const Duration(minutes: 1),
+                              label: '1 Min',
+                              isSelected: statusService.pollingInterval == const Duration(minutes: 1),
+                            ),
+                            _intervalItem(
+                              context,
+                              interval: const Duration(minutes: 5),
+                              label: '5 Min',
+                              isSelected: statusService.pollingInterval == const Duration(minutes: 5),
+                            ),
+                            _intervalItem(
+                              context,
+                              interval: const Duration(minutes: 10),
+                              label: '10 Min',
+                              isSelected: statusService.pollingInterval == const Duration(minutes: 10),
+                            ),
+                          ],
+                        );
+
+                        if (selected != null) {
+                          statusService.setPollingInterval(selected);
+                        }
+                      }
+
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: openMenu,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            _statusDropdown(
+                              context: context,
+                              statusService: statusService,
+                              label: 'MEM',
+                              value: '${memValue.toStringAsFixed(1)}%',
+                              valueColor: memValue > 80 ? negativeColor : positiveColor,
+                              selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
+                                  ? positiveColor
+                                  : greyColor,
+                              onTapDisabled: true,
+                            ),
+                            _statusDropdown(
+                              context: context,
+                              statusService: statusService,
+                              label: 'CPU',
+                              value: '${cpuValue.toStringAsFixed(1)}%',
+                              valueColor: cpuValue > 80 ? negativeColor : positiveColor,
+                              selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
+                                  ? positiveColor
+                                  : greyColor,
+                              onTapDisabled: true,
+                            ),
+                            _statusDropdown(
+                              context: context,
+                              statusService: statusService,
+                              label: 'STATUS',
+                              value: statusService.isOnline ? 'ONLINE' : 'OFFLINE',
+                              valueColor: statusService.isOnline ? positiveColor : negativeColor,
+                              selectedColor: statusService.isOnline ? positiveColor : negativeColor,
+                              onTapDisabled: true,
+                            ),
+                            _statusDropdown(
+                              context: context,
+                              statusService: statusService,
+                              label: 'HEALTH',
+                              value: _getHealthStatus(healthCpuValue, healthMemValue),
+                              valueColor: _getHealthColor(healthCpuValue, healthMemValue),
+                              selectedColor: _getHealthColor(healthCpuValue, healthMemValue),
+                              onTapDisabled: true,
+                            ),
+                            _statusDropdown(
+                              context: context,
+                              statusService: statusService,
+                              label: 'LATENCY',
+                              value: statusService.latencyMs == null ? 'N/A' : '${statusService.latencyMs}MS',
+                              valueColor: positiveColor,
+                              selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
+                                  ? positiveColor
+                                  : greyColor,
+                              onTapDisabled: true,
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
@@ -986,56 +1106,13 @@ class _DashboardState extends State<Dashboard> {
       value: value,
       valueColor: valueColor,
     );
-
-    if (onTapDisabled) {
-      return textWidget;
-    }
-
-    return PopupMenuButton<Duration>(
-      color: mainColor,
-      offset: Offset(0, 40.h),
-      onSelected: statusService.setPollingInterval,
-      itemBuilder: (BuildContext context) {
-        return [
-          _intervalItem(
-            context,
-            interval: const Duration(seconds: 1),
-            label: '1 Sec',
-            isSelected: statusService.pollingInterval == const Duration(seconds: 1),
-          ),
-          _intervalItem(
-            context,
-            interval: const Duration(seconds: 5),
-            label: '5 Sec',
-            isSelected: statusService.pollingInterval == const Duration(seconds: 5),
-          ),
-          _intervalItem(
-            context,
-            interval: const Duration(seconds: 30),
-            label: '30 Sec (Suggested)',
-            isSelected: statusService.pollingInterval == const Duration(seconds: 30),
-          ),
-          _intervalItem(
-            context,
-            interval: const Duration(minutes: 1),
-            label: '1 Min',
-            isSelected: statusService.pollingInterval == const Duration(minutes: 1),
-          ),
-          _intervalItem(
-            context,
-            interval: const Duration(minutes: 5),
-            label: '5 Min',
-            isSelected: statusService.pollingInterval == const Duration(minutes: 5),
-          ),
-          _intervalItem(
-            context,
-            interval: const Duration(minutes: 10),
-            label: '10 Min',
-            isSelected: statusService.pollingInterval == const Duration(minutes: 10),
-          ),
-        ];
-      },
-      child: textWidget,
+    return SizedBox(
+      height: 60.h,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 18.w),
+        alignment: Alignment.center,
+        child: textWidget,
+      ),
     );
   }
 
@@ -1119,5 +1196,14 @@ class _DashboardState extends State<Dashboard> {
     if (avgUsage < 50) return positiveColor;
     if (avgUsage < 75) return greyColor;
     return negativeColor;
+  }
+
+  Color _logTagColor(String tag) {
+    final normalized = tag.toUpperCase();
+    if (normalized.contains('ERROR')) return negativeColor;
+    if (normalized.contains('WARN')) return const Color(0xFFD2B13C);
+    if (normalized.contains('AUTH')) return positiveColor;
+    if (normalized.contains('INFO') || normalized.contains('SYS')) return const Color(0xFF5674FF);
+    return greyColor;
   }
 }

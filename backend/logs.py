@@ -6,9 +6,13 @@ import win32evtlog
 
 
 def _build_log_entry(event):
-    """Build a normalized log entry from a Windows security event."""
+    """Build a normalized log entry from a Windows event."""
     eid = event.EventID & 0x0000FFFF
     timestamp = event.TimeGenerated.strftime("%H:%M:%S")
+
+    raw_message = getattr(event, "StringInserts", None)
+    source_name = getattr(event, "SourceName", None)
+    log_type = getattr(event, "LogType", None)
 
     if eid == 4624:
         tag = "[AUTH]"
@@ -24,12 +28,19 @@ def _build_log_entry(event):
         msg = "Credential Manager reading requested"
     else:
         tag = "[SYS]"
-        msg = f"Security event {eid} logged by {event.SourceName}"
+        msg = f"Event {eid} logged by {source_name or 'unknown source'}"
 
     return {
         "time": timestamp,
         "tag": tag,
         "msg": msg,
+        "event_id": eid,
+        "source": source_name,
+        "log_type": log_type,
+        "record_number": getattr(event, "RecordNumber", None),
+        "computer": getattr(event, "ComputerName", None),
+        "category": getattr(event, "EventCategory", None),
+        "raw_message": raw_message,
     }
 
 
@@ -42,18 +53,34 @@ def _emit_log(log_entry, on_log):
 
 def monitor_security_events(on_log=None, stop_event=None, poll_interval=0.5):
     server = "localhost"
-    log_type = "Security"
+    preferred_logs = ["Security", "Application"]
+    hand = None
+    active_log_type = None
 
-    try:
-        hand = win32evtlog.OpenEventLog(server, log_type)
-    except Exception:
+    for log_type in preferred_logs:
+        try:
+            hand = win32evtlog.OpenEventLog(server, log_type)
+            active_log_type = log_type
+            break
+        except Exception:
+            continue
+
+    if hand is None:
         error_log = {
             "time": datetime.now().strftime("%H:%M:%S"),
             "tag": "[ERROR]",
-            "msg": "Access Denied. Run as Admin.",
+            "msg": "Unable to open Security or Application event logs.",
         }
         _emit_log(error_log, on_log)
         return
+
+    if active_log_type != "Security":
+        fallback_log = {
+            "time": datetime.now().strftime("%H:%M:%S"),
+            "tag": "[WARN]",
+            "msg": f"Security log unavailable; streaming {active_log_type} log instead.",
+        }
+        _emit_log(fallback_log, on_log)
 
     flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
     seen_records = set()

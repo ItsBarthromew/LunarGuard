@@ -4,7 +4,8 @@ class Statuses:
 
     @staticmethod
     def get_cpu_usage():
-        return psutil.cpu_percent(interval=1)
+        # Non-blocking read avoids long per-request waits that can cause client timeouts.
+        return psutil.cpu_percent(interval=None)
 
     @staticmethod
     def get_memory_usage():
@@ -23,9 +24,3 @@ class Statuses:
             'bytes_sent': net_io.bytes_sent,
             'bytes_recv': net_io.bytes_recv
         }
-    
-
-print(Statuses.get_cpu_usage())
-print(Statuses.get_memory_usage())
-print(Statuses.get_disk_usage())
-print(Statuses.get_network_usage())  

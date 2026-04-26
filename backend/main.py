@@ -1,9 +1,13 @@
 import asyncio
 import json
+import os
+import subprocess
+import sys
 import threading
-from datetime import datetime
+from collections import deque
+from datetime import datetime, timezone
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from logs import monitor_security_events
@@ -24,6 +28,52 @@ app.add_middleware(
 )
 
 
+RECENT_LOGS = deque(maxlen=1000)
+LOG_SUBSCRIBERS: set[asyncio.Queue] = set()
+LOG_THREAD_STARTED = False
+
+
+def _broadcast_log(log_entry: dict):
+    RECENT_LOGS.append(log_entry)
+
+    for queue in list(LOG_SUBSCRIBERS):
+        if queue.full():
+            try:
+                queue.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+        try:
+            queue.put_nowait(log_entry)
+        except asyncio.QueueFull:
+            pass
+
+
+def _start_log_monitor(loop: asyncio.AbstractEventLoop):
+    def on_log(log_entry):
+        loop.call_soon_threadsafe(_broadcast_log, log_entry)
+
+    worker = threading.Thread(
+        target=monitor_security_events,
+        kwargs={
+            "on_log": on_log,
+            "poll_interval": 0.5,
+        },
+        daemon=True,
+    )
+    worker.start()
+
+
+@app.on_event("startup")
+async def startup_event():
+    global LOG_THREAD_STARTED
+
+    if LOG_THREAD_STARTED:
+        return
+
+    LOG_THREAD_STARTED = True
+    _start_log_monitor(asyncio.get_running_loop())
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
@@ -36,9 +86,17 @@ def get_cpu_status():
 
 
 @app.get("/status/memory", tags=["Status"])
-def get_memory_status():
+def get_memory_status(t0: int | None = Query(default=None)):
     """Get current memory usage percentage"""
-    return {"memory": Statuses.get_memory_usage()}
+    response = {
+        "memory": Statuses.get_memory_usage(),
+        "t1": int(datetime.now(timezone.utc).timestamp() * 1000),
+    }
+
+    if t0 is not None:
+        response["t0"] = t0
+
+    return response
 
 
 @app.get("/status/disk", tags=["Status"])
@@ -53,9 +111,36 @@ def get_network_status():
     return {"network": Statuses.get_network_usage()}
 
 
+@app.get("/logs/ws-info", tags=["Logs"])
+def get_logs_websocket_info(request: Request):
+    """Return the websocket URL and related log endpoints for the live log stream."""
+    scheme = "wss" if request.url.scheme == "https" else "ws"
+    host = request.headers.get("host") or request.url.netloc
+
+    return {
+        "websocket_url": f"{scheme}://{host}/ws/logs",
+        "websocket_path": "/ws/logs",
+        "recent_logs_path": "/logs/recent",
+        "description": "Connect a websocket client to /ws/logs to receive live Windows security logs.",
+    }
+
+
+@app.get("/logs/recent", tags=["Logs"])
+def get_recent_logs(limit: int = Query(default=100, ge=1, le=1000)):
+    """Return the most recent log entries being streamed to websocket clients."""
+    recent_logs = list(RECENT_LOGS)
+    return {"count": len(recent_logs), "logs": recent_logs[-limit:]}
+
+
 @app.websocket("/ws/logs")
 async def logs_websocket(websocket: WebSocket):
     await websocket.accept()
+
+    event_queue = asyncio.Queue(maxsize=500)
+    LOG_SUBSCRIBERS.add(event_queue)
+
+    for log_entry in RECENT_LOGS:
+        await websocket.send_text(json.dumps(log_entry))
 
     await websocket.send_text(
         json.dumps(
@@ -67,29 +152,6 @@ async def logs_websocket(websocket: WebSocket):
         )
     )
 
-    event_queue = asyncio.Queue(maxsize=200)
-    stop_event = threading.Event()
-    loop = asyncio.get_running_loop()
-
-    def on_log(log_entry):
-        def enqueue():
-            if event_queue.full():
-                event_queue.get_nowait()
-            event_queue.put_nowait(log_entry)
-
-        loop.call_soon_threadsafe(enqueue)
-
-    worker = threading.Thread(
-        target=monitor_security_events,
-        kwargs={
-            "on_log": on_log,
-            "stop_event": stop_event,
-            "poll_interval": 0.5,
-        },
-        daemon=True,
-    )
-    worker.start()
-
     try:
         while True:
             log_entry = await event_queue.get()
@@ -97,8 +159,7 @@ async def logs_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        stop_event.set()
-        worker.join(timeout=2)
+        LOG_SUBSCRIBERS.discard(event_queue)
 
 
 @app.websocket("/ws/statuses")
@@ -116,7 +177,39 @@ async def statuses_websocket(websocket: WebSocket):
 def main():
     import uvicorn
 
+    _ensure_admin_rights_windows()
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+
+
+def _ensure_admin_rights_windows():
+    """On Windows, relaunch this process with admin rights before running the API."""
+    if os.name != "nt":
+        return
+
+    import ctypes
+
+    try:
+        is_admin = bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        is_admin = False
+
+    if is_admin:
+        return
+
+    params = subprocess.list2cmdline(sys.argv)
+    result = ctypes.windll.shell32.ShellExecuteW(
+        None,
+        "runas",
+        sys.executable,
+        params,
+        None,
+        1,
+    )
+
+    if result <= 32:
+        raise RuntimeError("Unable to request administrator privileges.")
+
+    raise SystemExit(0)
 
 
 if __name__ == "__main__":
