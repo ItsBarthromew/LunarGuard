@@ -1,0 +1,45 @@
+name: lunarguard
+description: "A SIEM dashboard built with Flutter, designed to provide real-time insights and analytics for security events. It offers a user-friendly interface for monitoring, analyzing, and responding to security incidents effectively."
+publish_to: 'none' 
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  flutter_screenutil: ^5.9.3
+  provider: ^6.1.5+1
+  web_socket_channel: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/images/
+
+  fonts:
+    - family: ClarendonBold
+      fonts:
+        - asset: assets/fonts/ClarendonB.otf
+    
+    - family: Clarendon
+      fonts:
+        - asset: assets/fonts/Clarendon.otf
+    
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/Orbitron.ttf
