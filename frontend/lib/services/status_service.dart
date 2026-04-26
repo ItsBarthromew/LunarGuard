@@ -32,6 +32,7 @@ class StatusService extends ChangeNotifier {
   NetworkStatus? currentStatus;
   double? cpuUsage;
   double? memoryUsage;
+  Duration pollingInterval = const Duration(seconds: 30);
   WebSocket? _socket;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _reconnectTimer;
@@ -58,10 +59,17 @@ class StatusService extends ChangeNotifier {
     // Fetch immediately
     await _fetchCpuMemoryStatus();
     
-    // Then poll every 1 second
-    _statusCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    // Then poll at the configured interval
+    _statusCheckTimer = Timer.periodic(pollingInterval, (_) {
       _fetchCpuMemoryStatus();
     });
+  }
+
+  void setPollingInterval(Duration interval) {
+    if (_isDisposed) return;
+    pollingInterval = interval;
+    _startStatusCheck();
+    notifyListeners();
   }
 
   Future<void> _fetchCpuMemoryStatus() async {

@@ -879,64 +879,58 @@ class _DashboardState extends State<Dashboard> {
                     builder: (context, statusService, child) {
                       final cpuValue = statusService.cpuUsage ?? 0.0;
                       final memValue = statusService.memoryUsage ?? 0.0;
-                      
+
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          //Memory Usage
-                          Text(
-                            'MEM: ${memValue.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              height: 0.8.h,
-                              fontFamily: "ClarendonBold",
-                              color: memValue > 80 ? negativeColor : positiveColor,
-                            ),
+                          _statusDropdown(
+                            context: context,
+                            statusService: statusService,
+                            label: 'MEM',
+                            value: '${memValue.toStringAsFixed(1)}%',
+                            valueColor: memValue > 80 ? negativeColor : positiveColor,
+                            selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
+                                ? positiveColor
+                                : greyColor,
                           ),
-
-                          //CPU Usage
-                          Text(
-                            'CPU: ${cpuValue.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              height: 0.8.h,
-                              fontFamily: "ClarendonBold",
-                              color: cpuValue > 80 ? negativeColor : positiveColor,
-                            ),
+                          _statusDropdown(
+                            context: context,
+                            statusService: statusService,
+                            label: 'CPU',
+                            value: '${cpuValue.toStringAsFixed(1)}%',
+                            valueColor: cpuValue > 80 ? negativeColor : positiveColor,
+                            selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
+                                ? positiveColor
+                                : greyColor,
                           ),
-
-                          //Status (Online/Offline etc.)
-                          Text(
-                            'STATUS: ${statusService.isRunning ? 'ONLINE' : 'OFFLINE'}',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              height: 0.8.h,
-                              fontFamily: "ClarendonBold",
-                              color: statusService.isRunning ? positiveColor : negativeColor,
-                            ),
+                          _statusDropdown(
+                            context: context,
+                            statusService: statusService,
+                            label: 'STATUS',
+                            value: statusService.isRunning ? 'ONLINE' : 'OFFLINE',
+                            valueColor: statusService.isRunning ? positiveColor : negativeColor,
+                            selectedColor: statusService.isRunning ? positiveColor : negativeColor,
+                            onTapDisabled: true,
                           ),
-
-                          //Health (Good/Fair/Poor)
-                          Text(
-                            'HEALTH: ${_getHealthStatus(cpuValue, memValue)}',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              height: 0.8.h,
-                              fontFamily: "ClarendonBold",
-                              color: _getHealthColor(cpuValue, memValue),
-                            ),
+                          _statusDropdown(
+                            context: context,
+                            statusService: statusService,
+                            label: 'HEALTH',
+                            value: _getHealthStatus(cpuValue, memValue),
+                            valueColor: _getHealthColor(cpuValue, memValue),
+                            selectedColor: _getHealthColor(cpuValue, memValue),
+                            onTapDisabled: true,
                           ),
-
-                          //Latency (ms)
-                          Text(
-                            'LATENCY: ${(statusService.currentStatus?.updatedAt.millisecondsSinceEpoch ?? 0) % 100}MS',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              height: 0.8.h,
-                              fontFamily: "ClarendonBold",
-                              color: positiveColor,
-                            ),
+                          _statusDropdown(
+                            context: context,
+                            statusService: statusService,
+                            label: 'LATENCY',
+                            value: '${(statusService.currentStatus?.updatedAt.millisecondsSinceEpoch ?? 0) % 100}MS',
+                            valueColor: positiveColor,
+                            selectedColor: statusService.pollingInterval == const Duration(seconds: 30)
+                                ? positiveColor
+                                : greyColor,
                           ),
                         ],
                       );
@@ -975,6 +969,141 @@ class _DashboardState extends State<Dashboard> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _statusDropdown({
+    required BuildContext context,
+    required StatusService statusService,
+    required String label,
+    required String value,
+    required Color valueColor,
+    required Color selectedColor,
+    bool onTapDisabled = false,
+  }) {
+    final textWidget = _statusTextLine(
+      label: label,
+      value: value,
+      valueColor: valueColor,
+    );
+
+    if (onTapDisabled) {
+      return textWidget;
+    }
+
+    return PopupMenuButton<Duration>(
+      color: mainColor,
+      offset: Offset(0, 40.h),
+      onSelected: statusService.setPollingInterval,
+      itemBuilder: (BuildContext context) {
+        return [
+          _intervalItem(
+            context,
+            interval: const Duration(seconds: 1),
+            label: '1 Sec',
+            isSelected: statusService.pollingInterval == const Duration(seconds: 1),
+          ),
+          _intervalItem(
+            context,
+            interval: const Duration(seconds: 5),
+            label: '5 Sec',
+            isSelected: statusService.pollingInterval == const Duration(seconds: 5),
+          ),
+          _intervalItem(
+            context,
+            interval: const Duration(seconds: 30),
+            label: '30 Sec (Suggested)',
+            isSelected: statusService.pollingInterval == const Duration(seconds: 30),
+          ),
+          _intervalItem(
+            context,
+            interval: const Duration(minutes: 1),
+            label: '1 Min',
+            isSelected: statusService.pollingInterval == const Duration(minutes: 1),
+          ),
+          _intervalItem(
+            context,
+            interval: const Duration(minutes: 5),
+            label: '5 Min',
+            isSelected: statusService.pollingInterval == const Duration(minutes: 5),
+          ),
+          _intervalItem(
+            context,
+            interval: const Duration(minutes: 10),
+            label: '10 Min',
+            isSelected: statusService.pollingInterval == const Duration(minutes: 10),
+          ),
+        ];
+      },
+      child: textWidget,
+    );
+  }
+
+  PopupMenuItem<Duration> _intervalItem(
+    BuildContext context, {
+    required Duration interval,
+    required String label,
+    required bool isSelected,
+  }) {
+    return PopupMenuItem<Duration>(
+      value: interval,
+      child: Row(
+        children: [
+          Visibility(
+            visible: isSelected,
+            child: Padding(
+              padding: EdgeInsets.only(right: 8.w),
+              child: Icon(
+                Icons.check,
+                color: positiveColor,
+                size: 16.sp,
+              ),
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontFamily: "Clarendon",
+              color: greyColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusTextLine({
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: TextStyle(
+              fontSize: 12.sp,
+              height: 0.8.h,
+              fontFamily: "ClarendonBold",
+              color: greyColor,
+            ),
+          ),
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              fontSize: 12.sp,
+              height: 0.8.h,
+              fontFamily: "ClarendonBold",
+              color: valueColor,
+            ),
+          ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      softWrap: false,
     );
   }
 
