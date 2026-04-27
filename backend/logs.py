@@ -1,12 +1,26 @@
 import json
 import time
 from datetime import datetime
+import threading
 
 import win32evtlog
 
 
 TARGET_EVENT_ID = 5379
-SUPPRESSION_WINDOW_SECONDS = 30
+LOGS_PROCESSED_COUNT = 0
+LOGS_COUNT_LOCK = threading.Lock()
+
+
+def record_log_processed(count: int = 1):
+    global LOGS_PROCESSED_COUNT
+
+    with LOGS_COUNT_LOCK:
+        LOGS_PROCESSED_COUNT += count
+
+
+def get_logs_processed_count() -> int:
+    with LOGS_COUNT_LOCK:
+        return LOGS_PROCESSED_COUNT
 
 
 def _build_log_entry(event):
@@ -49,133 +63,71 @@ def _build_log_entry(event):
 
 
 def _emit_log(log_entry, on_log):
+    print(json.dumps(log_entry))
     if on_log:
         on_log(log_entry)
-    else:
-        print(json.dumps(log_entry))
 
 
 def monitor_security_events(on_log=None, stop_event=None, poll_interval=0.5):
     server = "localhost"
-    preferred_logs = ["Security", "Application"]
-    hand = None
-    active_log_type = None
+    preferred_logs = ["Security", "Application", "System"]
+    active_logs = []
 
     for log_type in preferred_logs:
         try:
             hand = win32evtlog.OpenEventLog(server, log_type)
-            active_log_type = log_type
-            break
+            active_logs.append((log_type, hand))
         except Exception:
             continue
 
-    if hand is None:
+    if not active_logs:
         error_log = {
             "time": datetime.now().strftime("%H:%M:%S"),
             "tag": "[ERROR]",
-            "msg": "Unable to open Security or Application event logs.",
+            "msg": "Unable to open Security, Application, or System event logs.",
         }
         _emit_log(error_log, on_log)
         return
 
-    if active_log_type != "Security":
+    active_log_types = [log_type for log_type, _ in active_logs]
+
+    if "Security" not in active_log_types:
         fallback_log = {
             "time": datetime.now().strftime("%H:%M:%S"),
             "tag": "[WARN]",
-            "msg": f"Security log unavailable; streaming {active_log_type} log instead.",
+            "msg": f"Security log unavailable; streaming {', '.join(active_log_types)} log(s) instead.",
         }
         _emit_log(fallback_log, on_log)
 
     flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
-    seen_records = set()
-    startup_cutoff_record = None
-    suppression_window_started_at = None
-    suppressed_credential_events = 0
-
-    # Prime the stream cursor so websocket clients receive only events that occur
-    # after monitor startup, not historical backlog.
-    try:
-        initial_events = win32evtlog.ReadEventLog(hand, flags, 0)
-        initial_record_numbers = [
-            getattr(event, "RecordNumber", None)
-            for event in initial_events or []
-            if getattr(event, "RecordNumber", None) is not None
-        ]
-        if initial_record_numbers:
-            startup_cutoff_record = max(initial_record_numbers)
-            seen_records.update(initial_record_numbers)
-    except Exception:
-        startup_cutoff_record = None
-
-    def emit_credential_summary_if_due(force=False):
-        nonlocal suppression_window_started_at, suppressed_credential_events
-
-        if suppression_window_started_at is None:
-            return
-
-        elapsed = time.monotonic() - suppression_window_started_at
-        if not force and elapsed < SUPPRESSION_WINDOW_SECONDS:
-            return
-
-        if suppressed_credential_events > 0:
-            summary_log = {
-                "time": datetime.now().strftime("%H:%M:%S"),
-                "tag": "[CRED]",
-                "msg": f"Suppressed {suppressed_credential_events} repeated Credential Manager reading requested events in last {SUPPRESSION_WINDOW_SECONDS}s",
-                "event_id": TARGET_EVENT_ID,
-                "source": "LunarGuard",
-                "log_type": active_log_type,
-                "record_number": None,
-                "computer": server,
-                "category": None,
-                "raw_message": None,
-            }
-            _emit_log(summary_log, on_log)
-
-        suppression_window_started_at = None
-        suppressed_credential_events = 0
 
     while stop_event is None or not stop_event.is_set():
-        emit_credential_summary_if_due()
-        events = win32evtlog.ReadEventLog(hand, flags, 0)
-        if events:
+        for log_type, hand in active_logs:
+            try:
+                events = win32evtlog.ReadEventLog(hand, flags, 0)
+            except Exception as exc:
+                _emit_log(
+                    {
+                        "time": datetime.now().strftime("%H:%M:%S"),
+                        "tag": "[WARN]",
+                        "msg": f"Unable to read {log_type} log: {exc}",
+                    },
+                    on_log,
+                )
+                continue
+
+            if not events:
+                continue
+
             for event in events:
-                record_number = getattr(event, "RecordNumber", None)
-                if record_number is not None:
-                    if startup_cutoff_record is not None and record_number <= startup_cutoff_record:
-                        continue
-                    if record_number in seen_records:
-                        continue
-                    seen_records.add(record_number)
-
                 log_entry = _build_log_entry(event)
-                event_id = log_entry.get("event_id")
+                if not log_entry.get("log_type"):
+                    log_entry["log_type"] = log_type
 
-                if event_id != TARGET_EVENT_ID:
-                    _emit_log(log_entry, on_log)
-                    continue
-
-                emit_credential_summary_if_due()
-
-                if suppression_window_started_at is None:
-                    _emit_log(log_entry, on_log)
-                    suppression_window_started_at = time.monotonic()
-                    continue
-
-                if (time.monotonic() - suppression_window_started_at) < SUPPRESSION_WINDOW_SECONDS:
-                    suppressed_credential_events += 1
-                    continue
-
-                emit_credential_summary_if_due(force=True)
+                record_log_processed()
                 _emit_log(log_entry, on_log)
-                suppression_window_started_at = time.monotonic()
-
-            if len(seen_records) > 3000:
-                seen_records.clear()
 
         time.sleep(poll_interval)
-
-    emit_credential_summary_if_due(force=True)
 
 
 if __name__ == "__main__":

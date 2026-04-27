@@ -84,13 +84,13 @@
 					<section class="stats-row" aria-label="Security Metrics">
 						<article class="stat-card panel">
 							<p class="heading-text">ACTIVE THREATS</p>
-							<p class="stat-delta positive">-100%</p>
-							<p class="stat-value">0</p>
+							<p class="stat-delta">LIVE</p>
+							<p class="stat-value" id="active-alerts-status">0</p>
 						</article>
 						<article class="stat-card panel">
 							<p class="heading-text">LOGS PROCESSED</p>
 							<p class="stat-delta positive">-10%</p>
-							<p class="stat-value">2.6 M</p>
+							<p class="stat-value" id="logs-processed-status">0</p>
 						</article>
 						<article class="stat-card panel">
 							<p class="heading-text">PROTECTED DEVICES</p>
@@ -152,7 +152,7 @@
 				<div class="right-column">
 					<section class="live-logs panel">
 						<p class="heading-text">LIVE LOGS</p>
-						<div class="log-list normal-text">
+						<div class="log-list normal-text" id="live-log-list">
 							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag info">[INFO]</span> Incoming SSH connection from 192.168.1.44</p>
 							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag auth">[AUTH]</span> User "admin" successfully logged in from WebUI</p>
 							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag warn">[WARN]</span> Abnormal data throughput detected on Node-04</p>
@@ -166,22 +166,10 @@
 
 					<section class="alerts-panel panel">
 						<p class="heading-text">ALERTS</p>
-						<div class="alert-stack">
+						<div class="alert-stack" id="alert-list">
 							<article class="alert-card">
-								<p class="alert-title medium">MEDIUM PRIORITY</p>
-								<p class="alert-desc">Unauthorized SSH attempt from<br />192.168.1.45</p>
-								<div class="alert-actions">
-									<button class="mini-btn blue" type="button">Block IP</button>
-									<button class="mini-btn" type="button">Ignore</button>
-								</div>
-							</article>
-							<article class="alert-card">
-								<p class="alert-title high">HIGHER PRIORITY</p>
-								<p class="alert-desc">Suspicious file "backup_sys.sh"<br />execution</p>
-								<div class="alert-actions">
-									<button class="mini-btn red" type="button">Quarantine</button>
-									<button class="mini-btn" type="button">Ignore</button>
-								</div>
+								<p class="alert-title info">INFO</p>
+								<p class="alert-desc">Waiting for live alerts...</p>
 							</article>
 						</div>
 					</section>
@@ -189,13 +177,15 @@
 			</section>
 
 			<footer class="status-strip panel" aria-label="System Status">
-				<span class="ok">MEM: 5.6GB/12GB (48.7%)</span>
-				<span class="warn">CPU: 76%</span>
-				<span class="ok">STATUS: ONLINE</span>
-				<span class="ok">HEALTH: GOOD</span>
-				<span class="ok">LATENCY: 14MS</span>
+				<span class="ok" id="memory-status">MEM: --%</span>
+				<span class="warn" id="cpu-status">CPU: --%</span>
+				<span class="ok" id="connection-status">STATUS: ONLINE</span>
+				<span class="ok" id="health-status">HEALTH: --</span>
+				<span class="ok" id="latency-status">LATENCY: --MS</span>
 			</footer>
 		</main>
 	</div>
+	<script src="js/api.js" defer></script>
+	<script src="js/main.js" defer></script>
 </body>
 </html>

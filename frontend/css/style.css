@@ -277,6 +277,10 @@ body {
 	color: var(--positivecolor2);
 }
 
+.stat-delta {
+	color: #737373;
+}
+
 .stat-value {
 	margin: 0;
 	font-family: "ClarendonBold", "Clarendon", serif;
@@ -287,7 +291,7 @@ body {
 
 .content-grid {
 	display: grid;
-	grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+	grid-template-columns: minmax(0, 1fr) 360px;
 	gap: 14px;
 	align-items: start;
 	animation: rise-in 0.8s ease both;
@@ -309,6 +313,11 @@ body {
 	display: grid;
 	gap: 14px;
 	align-items: start;
+}
+
+.live-logs {
+	width: 360px;
+	max-width: 100%;
 }
 
 .quick-actions,
@@ -393,6 +402,8 @@ body {
 	margin-top: 1px;
 	display: grid;
 	gap: 2px;
+	height: 260px;
+	overflow: hidden;
 }
 
 .log-row {
@@ -424,17 +435,36 @@ body {
 }
 
 .alert-stack {
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	gap: 8px;
 	margin-top: 8px;
+	height: 300px;
+	overflow-y: auto;
+	padding-right: 4px;
 }
 
 .alert-card {
 	border: 1px solid #8c8c8c;
 	border-radius: 10px;
-	padding: 6px;
+	padding: 8px;
 	background: #f8f8f8;
-	text-align: center;
+	text-align: left;
+}
+
+.alert-card.critical {
+	border-color: #c33b31;
+	background: #fff1ef;
+}
+
+.alert-card.warn {
+	border-color: #d2a33c;
+	background: #fff8e9;
+}
+
+.alert-card.info {
+	border-color: #2f64ca;
+	background: #eef3ff;
 }
 
 .alert-title {
@@ -453,12 +483,37 @@ body {
 	color: var(--negativecolor);
 }
 
+.alert-title.critical {
+	color: var(--negativecolor);
+}
+
+.alert-title.warn {
+	color: #cc9a25;
+}
+
+.alert-title.info {
+	color: var(--positivecolor2);
+}
+
 .alert-desc {
-	margin: 5px 0;
+	margin: 5px 0 0;
 	font-family: "ClarendonBold", "Clarendon", serif;
 	font-size: 11px;
 	color: #585858;
-	line-height: 1.1;
+	line-height: 1.2;
+}
+
+.alert-meta {
+	margin: 0;
+	font-family: "ClarendonBold", "Clarendon", serif;
+	font-size: 10px;
+	color: #6d6d6d;
+}
+
+.alerts-panel {
+	height: 358px;
+	display: flex;
+	flex-direction: column;
 }
 
 .alert-actions {
