@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>LunarGuard Dashboard</title>
+	<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+	<div class="dashboard-shell">
+		<aside class="sidebar panel" aria-label="Sidebar Navigation">
+			<div class="logo-row">
+				<svg class="logo-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path d="M12 3C7 3 3 7 3 12s4 9 9 9c4.2 0 7.8-2.9 8.8-6.9-1.2 1-2.7 1.6-4.3 1.6-3.9 0-7-3.1-7-7 0-2.2 1-4.1 2.6-5.4z" stroke="currentColor" stroke-width="1.8"/>
+					<path d="M12 1.8C6 1.8 1.2 6.6 1.2 12.6 1.2 18.6 6 23.4 12 23.4 18 23.4 22.8 18.6 22.8 12.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+				</svg>
+				<div class="logo-copy">
+					<div class="brand-text">LVNAR GVARD</div>
+					<p class="brand-sub">Mufaya Version Beta 1.0</p>
+				</div>
+			</div>
+
+			<nav class="nav-list" aria-label="Primary">
+				<a href="#" class="nav-item navigation-text is-active" aria-current="page">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg>
+					<span>DASHBOARD</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a6 6 0 0 0-6 6v2.2L4.4 13a1.8 1.8 0 0 0 1.5 2.7h12.2a1.8 1.8 0 0 0 1.5-2.7L18 10.2V8a6 6 0 0 0-6-6z"/><circle cx="12" cy="19" r="2.2"/></svg>
+					<span>ALERTS</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2.5" y="3" width="19" height="18" rx="3"/><rect x="6" y="7" width="9" height="2" fill="#f4f4f4"/><rect x="6" y="11" width="12" height="2" fill="#f4f4f4"/><rect x="6" y="15" width="8" height="2" fill="#f4f4f4"/></svg>
+					<span>LOGS</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="14" height="18" rx="3"/><rect x="9" y="8" width="13" height="13" rx="2"/><circle cx="9" cy="6" r="1.2" fill="#f4f4f4"/></svg>
+					<span>DEVICES</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2l8 8-8 8-2.2-2.2L16.6 11H2V9h14.6l-4.8-4.8z"/></svg>
+					<span>RULES</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2h4l.7 2.1c.7.2 1.3.5 1.9.9l2-.8 2.8 2.8-.8 2c.4.6.7 1.2.9 1.9L24 14v4l-2.1.7a8 8 0 0 1-.9 1.9l.8 2-2.8 2.8-2-.8a8 8 0 0 1-1.9.9L14 26h-4l-.7-2.1a8 8 0 0 1-1.9-.9l-2 .8L2.6 21l.8-2a8 8 0 0 1-.9-1.9L.4 16v-4l2.1-.7a8 8 0 0 1 .9-1.9l-.8-2L5.4 4.6l2 .8a8 8 0 0 1 1.9-.9z" transform="scale(0.8) translate(2 2)"/><circle cx="12" cy="12" r="3.2" fill="#f4f4f4"/></svg>
+					<span>EMAILS</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2h4l.7 2.1c.7.2 1.3.5 1.9.9l2-.8 2.8 2.8-.8 2c.4.6.7 1.2.9 1.9L24 14v4l-2.1.7a8 8 0 0 1-.9 1.9l.8 2-2.8 2.8-2-.8a8 8 0 0 1-1.9.9L14 26h-4l-.7-2.1a8 8 0 0 1-1.9-.9l-2 .8L2.6 21l.8-2a8 8 0 0 1-.9-1.9L.4 16v-4l2.1-.7a8 8 0 0 1 .9-1.9l-.8-2L5.4 4.6l2 .8a8 8 0 0 1 1.9-.9z" transform="scale(0.8) translate(2 2)"/><circle cx="12" cy="12" r="3.2" fill="#f4f4f4"/></svg>
+					<span>FIREWALL</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2h4l.7 2.1c.7.2 1.3.5 1.9.9l2-.8 2.8 2.8-.8 2c.4.6.7 1.2.9 1.9L24 14v4l-2.1.7a8 8 0 0 1-.9 1.9l.8 2-2.8 2.8-2-.8a8 8 0 0 1-1.9.9L14 26h-4l-.7-2.1a8 8 0 0 1-1.9-.9l-2 .8L2.6 21l.8-2a8 8 0 0 1-.9-1.9L.4 16v-4l2.1-.7a8 8 0 0 1 .9-1.9l-.8-2L5.4 4.6l2 .8a8 8 0 0 1 1.9-.9z" transform="scale(0.8) translate(2 2)"/><circle cx="12" cy="12" r="3.2" fill="#f4f4f4"/></svg>
+					<span>ANTIVIRUS</span>
+				</a>
+				<a href="#" class="nav-item navigation-text">
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2h4l.7 2.1c.7.2 1.3.5 1.9.9l2-.8 2.8 2.8-.8 2c.4.6.7 1.2.9 1.9L24 14v4l-2.1.7a8 8 0 0 1-.9 1.9l.8 2-2.8 2.8-2-.8a8 8 0 0 1-1.9.9L14 26h-4l-.7-2.1a8 8 0 0 1-1.9-.9l-2 .8L2.6 21l.8-2a8 8 0 0 1-.9-1.9L.4 16v-4l2.1-.7a8 8 0 0 1 .9-1.9l-.8-2L5.4 4.6l2 .8a8 8 0 0 1 1.9-.9z" transform="scale(0.8) translate(2 2)"/><circle cx="12" cy="12" r="3.2" fill="#f4f4f4"/></svg>
+					<span>SETTINGS</span>
+				</a>
+			</nav>
+		</aside>
+
+		<main class="main-area" aria-label="Main Dashboard Content">
+			<header class="topbar panel">
+				<label class="search-box" aria-label="Search">
+					<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+						<path d="M20 20L16.7 16.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+					</svg>
+					<input class="search-input" type="search" placeholder="Search Logs, IPs, or Incidents" />
+				</label>
+
+				<div class="user-card">
+					<div>
+						<h1 class="user-name">JOHN DOE</h1>
+						<p class="user-meta">FULL ACCESS TIER<br />26 SEPTEMBER 2024, 13:00:05</p>
+					</div>
+					<div class="user-avatar" aria-hidden="true"></div>
+				</div>
+			</header>
+
+			<section class="content-grid" aria-label="Operational Panels">
+				<div class="left-stack">
+					<section class="stats-row" aria-label="Security Metrics">
+						<article class="stat-card panel">
+							<p class="heading-text">ACTIVE THREATS</p>
+							<p class="stat-delta positive">-100%</p>
+							<p class="stat-value">0</p>
+						</article>
+						<article class="stat-card panel">
+							<p class="heading-text">LOGS PROCESSED</p>
+							<p class="stat-delta positive">-10%</p>
+							<p class="stat-value">2.6 M</p>
+						</article>
+						<article class="stat-card panel">
+							<p class="heading-text">PROTECTED DEVICES</p>
+							<p class="stat-delta positive-alt">+3%</p>
+							<p class="stat-value">2</p>
+						</article>
+					</section>
+
+					<div class="left-column">
+					<section class="quick-actions panel">
+						<p class="heading-text">QUICK ACTIONS</p>
+						<div class="action-buttons">
+							<button class="action-btn red" type="button">Quarantine Mode</button>
+							<button class="action-btn blue" type="button">Block IP Range</button>
+							<button class="action-btn red" type="button">RESET Admins</button>
+						</div>
+					</section>
+
+					<section class="devices-panel panel">
+						<p class="heading-text">CONNECTED DEVICES</p>
+						<div class="device-list">
+							<article class="device-item">
+								<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><rect x="9" y="18" width="6" height="2"/></svg>
+								<div>
+									<p class="device-name">WINDOWS LAPTOP</p>
+									<p class="device-ip">192.168.18.6</p>
+									<p class="device-state">Active</p>
+								</div>
+							</article>
+							<article class="device-item">
+								<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="18" r="1.2" fill="#f4f4f4"/></svg>
+								<div>
+									<p class="device-name">ANDROID PHONE</p>
+									<p class="device-ip">192.168.18.6</p>
+									<p class="device-state">Active</p>
+								</div>
+							</article>
+							<article class="device-item">
+								<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 12h20v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M5 11a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11a4 4 0 0 1 8 0" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="14" width="2" height="2" fill="#f4f4f4"/><rect x="9" y="14" width="2" height="2" fill="#f4f4f4"/></svg>
+								<div>
+									<p class="device-name">CISCO SWITCH</p>
+									<p class="device-ip">192.168.18.6</p>
+									<p class="device-state">Active</p>
+								</div>
+							</article>
+							<article class="device-item offline">
+								<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><rect x="9" y="18" width="6" height="2"/></svg>
+								<div>
+									<p class="device-name">WINDOWS LAPTOP</p>
+									<p class="device-ip">192.168.18.6</p>
+									<p class="device-state">Offline</p>
+								</div>
+							</article>
+						</div>
+					</section>
+					</div>
+				</div>
+
+				<div class="right-column">
+					<section class="live-logs panel">
+						<p class="heading-text">LIVE LOGS</p>
+						<div class="log-list normal-text">
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag info">[INFO]</span> Incoming SSH connection from 192.168.1.44</p>
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag auth">[AUTH]</span> User "admin" successfully logged in from WebUI</p>
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag warn">[WARN]</span> Abnormal data throughput detected on Node-04</p>
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag info">[INFO]</span> Incoming SSH connection from 192.168.1.44</p>
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag auth">[AUTH]</span> User "admin" successfully logged in from WebUI</p>
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag warn">[WARN]</span> Abnormal data throughput detected on Node-04</p>
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag info">[INFO]</span> Incoming SSH connection from 192.168.1.44</p>
+							<p class="log-row"><span class="log-time">14:22:01</span> <span class="tag auth">[AUTH]</span> User "admin" successfully logged in from WebUI</p>
+						</div>
+					</section>
+
+					<section class="alerts-panel panel">
+						<p class="heading-text">ALERTS</p>
+						<div class="alert-stack">
+							<article class="alert-card">
+								<p class="alert-title medium">MEDIUM PRIORITY</p>
+								<p class="alert-desc">Unauthorized SSH attempt from<br />192.168.1.45</p>
+								<div class="alert-actions">
+									<button class="mini-btn blue" type="button">Block IP</button>
+									<button class="mini-btn" type="button">Ignore</button>
+								</div>
+							</article>
+							<article class="alert-card">
+								<p class="alert-title high">HIGHER PRIORITY</p>
+								<p class="alert-desc">Suspicious file "backup_sys.sh"<br />execution</p>
+								<div class="alert-actions">
+									<button class="mini-btn red" type="button">Quarantine</button>
+									<button class="mini-btn" type="button">Ignore</button>
+								</div>
+							</article>
+						</div>
+					</section>
+				</div>
+			</section>
+
+			<footer class="status-strip panel" aria-label="System Status">
+				<span class="ok">MEM: 5.6GB/12GB (48.7%)</span>
+				<span class="warn">CPU: 76%</span>
+				<span class="ok">STATUS: ONLINE</span>
+				<span class="ok">HEALTH: GOOD</span>
+				<span class="ok">LATENCY: 14MS</span>
+			</footer>
+		</main>
+	</div>
+</body>
+</html>

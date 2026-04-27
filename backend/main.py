@@ -14,7 +14,8 @@ from logs import monitor_security_events
 from statuses import Statuses
 
 app = FastAPI(
-    title="LVNΛR GUΛRD API",
+    title=
+    "LVNΛR GUΛRD API",
     version="0.1.0",
     description="The API Route for LunarGuard's backend services",
     openapi_url="/openapi.json",
