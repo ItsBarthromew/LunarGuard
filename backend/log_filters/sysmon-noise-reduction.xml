@@ -1,0 +1,17 @@
+<!--
+  Merge the ProcessCreate block below into your primary Sysmon config.
+  This excludes repetitive, high-volume process creation noise.
+-->
+<Sysmon schemaversion="4.90">
+  <EventFiltering>
+    <ProcessCreate onmatch="exclude">
+      <Image condition="is">C:\Windows\System32\svchost.exe</Image>
+      <Image condition="is">C:\Windows\System32\taskhostw.exe</Image>
+      <Image condition="is">C:\Windows\System32\RuntimeBroker.exe</Image>
+      <Image condition="is">C:\Windows\System32\WmiPrvSE.exe</Image>
+      <Image condition="is">C:\Windows\System32\dllhost.exe</Image>
+      <Image condition="is">C:\Windows\explorer.exe</Image>
+      <Image condition="is">C:\Windows\System32\SearchIndexer.exe</Image>
+    </ProcessCreate>
+  </EventFiltering>
+</Sysmon>

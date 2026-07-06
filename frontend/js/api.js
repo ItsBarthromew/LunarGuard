@@ -138,3 +138,23 @@ async function fetchRecentAlerts(limit = 30) {
 
 	return response.json();
 }
+
+async function fetchConnectedDevices(options = {}) {
+	const params = new URLSearchParams();
+	if (options.refresh === true) {
+		params.set("refresh", "true");
+	}
+
+	const suffix = params.toString() ? `?${params.toString()}` : "";
+	const response = await fetch(`${API_BASE_URL}/network/devices${suffix}`, {
+		headers: {
+			Accept: "application/json",
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`Connected devices request failed: ${response.status}`);
+	}
+
+	return response.json();
+}

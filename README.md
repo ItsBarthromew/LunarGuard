@@ -38,6 +38,35 @@ Severity levels (low, medium, high)
 Event details view
 Search and filter logs
 
+Windows Log Noise Reduction (SIEM Source Filtering)
+Goal: reduce high-volume Sysmon and background noise before forwarding to SIEM.
+
+Files added:
+- backend/log_filters/Generate-NoiseFilterConfig.ps1
+- backend/log_filters/sysmon-noise-reduction.xml
+- backend/log_filters/Apply-SysmonNoiseReduction.ps1
+
+Critical security events explicitly preserved (never suppressed):
+- 4625 (failed login)
+- 4720 (new user account)
+- 4728 (user added to privileged global group)
+- 1102 (audit log cleared)
+
+Quick start (PowerShell as Administrator):
+1. Generate WEF/log-shipper query filter artifacts
+	powershell -ExecutionPolicy Bypass -File backend\log_filters\Generate-NoiseFilterConfig.ps1 -LookbackMinutes 20 -ShowBaseline
+
+2. Use generated query file in your collector or shipper
+	Output file: C:\ProgramData\LunarGuard\filters\wef-querylist-noise-reduction.xml
+
+3. Apply Sysmon source filtering (optional, if Sysmon is deployed)
+	powershell -ExecutionPolicy Bypass -File backend\log_filters\Apply-SysmonNoiseReduction.ps1 -SysmonExePath "C:\Tools\Sysmon\sysmon64.exe" -ConfigPath "backend\log_filters\sysmon-noise-reduction.xml"
+
+Recommended:
+- Start with this baseline for 24 hours.
+- Review baseline JSON at C:\ProgramData\LunarGuard\filters\noise-filter-summary.json.
+- Only add exclusions for signed/expected binaries after validation.
+
 Advanced / Later
 Multi-device monitoring (multiple PCs)
 Centralized dashboard

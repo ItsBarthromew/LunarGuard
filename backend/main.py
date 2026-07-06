@@ -229,6 +229,16 @@ def get_network_status():
     return {"network": Statuses.get_network_usage()}
 
 
+@app.get("/network/devices", tags=["Network"])
+def get_connected_devices(
+    refresh: bool = Query(default=False),
+    active_probe: bool = Query(default=True),
+):
+    """Discover connected LAN devices from local ARP cache."""
+    ttl = 5 if refresh else 45
+    return Statuses.get_connected_devices(active_probe=active_probe, cache_ttl_seconds=ttl)
+
+
 @app.get("/status/logs", tags=["Status"])
 def get_logs_status():
     """Get total processed log count."""
