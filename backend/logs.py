@@ -42,7 +42,7 @@ LAST_READ_ERROR_EMITTED: dict[str, float] = {}
 READ_ERROR_COOLDOWN_SECONDS = 30
 INITIAL_BACKFILL_EVENTS_PER_LOG = max(
     0,
-    int(os.getenv("LG_LOG_BACKFILL_EVENTS", "0")),
+    int(os.getenv("LG_LOG_BACKFILL_EVENTS", "15")),
 )
 
 # Suppress repetitive known-noise combinations (source + event_id).
@@ -269,7 +269,8 @@ def monitor_security_events(on_log=None, stop_event=None, poll_interval=0.5):
                 if read_offset < oldest:
                     read_offset = oldest
 
-                # No new events yet; avoid invalid seek beyond the newest record.
+                # If the cursor is exactly at next_record (max_record + 1), it's a "wait" state.
+                # However, ReadEventLog throws error 87 if we seek exactly to max_record + 1.
                 if read_offset > max_record:
                     continue
 
@@ -288,8 +289,10 @@ def monitor_security_events(on_log=None, stop_event=None, poll_interval=0.5):
                 continue
 
             if not events:
+                # Optional: Add a debug log here if needed, but it will be noisy.
                 continue
 
+            # print(f"Read {len(events)} events from {log_type}") # DEBUG
             for event in events:
                 log_entry = _build_log_entry(event)
                 if not log_entry.get("log_type"):

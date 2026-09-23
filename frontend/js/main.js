@@ -14,6 +14,19 @@ const logsPauseButtonElement = document.getElementById("logs-pause-btn");
 const logsFollowButtonElement = document.getElementById("logs-follow-btn");
 const logsRefreshButtonElement = document.getElementById("logs-refresh-btn");
 const logsStreamStatusElement = document.getElementById("logs-stream-status");
+const logsRecentCountElement = document.getElementById("logs-recent-count");
+const logsWebsocketUrlElement = document.getElementById("logs-websocket-url");
+const alertsPageListElement = document.getElementById("alerts-page-list");
+const alertsRefreshButtonElement = document.getElementById("alerts-refresh-btn");
+const alertsClearButtonElement = document.getElementById("alerts-clear-btn");
+const devicesPageListElement = document.getElementById("devices-page-list");
+const devicesRefreshButtonElement = document.getElementById("devices-refresh-btn");
+const devicesLastScanElement = document.getElementById("devices-last-scan");
+const devicesTotalCountElement = document.getElementById("devices-total-count");
+const dashboardDevicesPanel = document.getElementById("dashboard-devices-panel");
+const scannerFilesCountElement = document.getElementById("scanner-files-count");
+const scannerThreatsCountElement = document.getElementById("scanner-threats-count");
+const scannerLogListElement = document.getElementById("scanner-log-list");
 const navItems = Array.from(document.querySelectorAll(".nav-item[data-view]"));
 const appViews = Array.from(document.querySelectorAll(".app-view"));
 
@@ -61,6 +74,10 @@ function setActiveView(viewName) {
 
 	if (viewName === "logs") {
 		loadRecentLogs({ quietFailure: false, retryOnFailure: true });
+	} else if (viewName === "alerts") {
+		loadRecentAlerts();
+	} else if (viewName === "devices") {
+		updateConnectedDevices();
 	}
 }
 
@@ -380,31 +397,34 @@ function setupAlertExpansion(summaryElement, cardElement) {
 	});
 }
 
-function renderAlertsPlaceholder(message, severity = "info") {
-	if (!alertListElement) {
+function renderAlertsPlaceholder(message, severity = "info", container = alertListElement) {
+	if (!container) {
 		return;
 	}
 
 	const placeholder = document.createElement("article");
 	placeholder.className = `alert-card ${severity} placeholder`;
 	placeholder.innerHTML = `<p class="alert-title ${severity}">${severity.toUpperCase()}</p><p class="alert-desc">${message}</p>`;
-	alertListElement.append(placeholder);
+	container.append(placeholder);
 }
 
 function ignoreAlertCard(cardElement) {
-	if (!alertListElement || !cardElement) {
-		return;
-	}
-
 	const signature = String(cardElement.dataset.signature || "");
 	if (signature) {
 		dismissedAlertSignatures.add(signature);
+
+		// Remove all cards with this signature from all views
+		const selector = `.alert-card[data-signature="${signature.replace(/"/g, '\\"')}"]`;
+		document.querySelectorAll(selector).forEach(card => card.remove());
+	} else {
+		cardElement.remove();
 	}
 
-	cardElement.remove();
-
-	if (alertListElement.children.length === 0) {
-		renderAlertsPlaceholder("No alerts yet", "info");
+	if (alertListElement && alertListElement.children.length === 0) {
+		renderAlertsPlaceholder("No alerts yet", "info", alertListElement);
+	}
+	if (alertsPageListElement && alertsPageListElement.children.length === 0) {
+		renderAlertsPlaceholder("No alerts yet", "info", alertsPageListElement);
 	}
 }
 
@@ -467,33 +487,36 @@ function buildAlertCard(alertEntry) {
 }
 
 function clearAlerts() {
-	if (!alertListElement) {
-		return;
+	if (alertListElement) {
+		alertListElement.innerHTML = "";
 	}
-
-	alertListElement.innerHTML = "";
+	if (alertsPageListElement) {
+		alertsPageListElement.innerHTML = "";
+	}
 }
 
 function prependAlert(alertEntry) {
-	if (!alertListElement) {
-		return;
-	}
-
 	const signature = buildAlertSignature(alertEntry);
 	if (dismissedAlertSignatures.has(signature)) {
 		return;
 	}
 
-	if (alertListElement.firstElementChild?.classList.contains("placeholder")) {
-		alertListElement.innerHTML = "";
-	}
+	[alertListElement, alertsPageListElement].forEach((container) => {
+		if (!container) {
+			return;
+		}
 
-	const card = buildAlertCard(alertEntry);
-	alertListElement.prepend(card);
+		if (container.firstElementChild?.classList.contains("placeholder")) {
+			container.innerHTML = "";
+		}
 
-	while (alertListElement.children.length > MAX_ALERT_ROWS) {
-		alertListElement.removeChild(alertListElement.lastElementChild);
-	}
+		const card = buildAlertCard(alertEntry);
+		container.prepend(card);
+
+		while (container.children.length > MAX_ALERT_ROWS) {
+			container.removeChild(container.lastElementChild);
+		}
+	});
 }
 
 function getDeviceIconSvg(deviceType) {
@@ -505,7 +528,12 @@ function getDeviceIconSvg(deviceType) {
 		return '<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 12h20v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M5 11a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11a4 4 0 0 1 8 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
 	}
 
-	return '<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><rect x="9" y="18" width="6" height="2"/></svg>';
+	if (deviceType === "media") {
+		return '<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="3" width="20" height="15" rx="2"/><path d="M7 21h10M12 18v3" stroke="currentColor" stroke-width="2"/></svg>';
+	}
+
+	// Default to mobile icon
+	return '<svg class="device-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="18" r="1.2" fill="#f4f4f4"/></svg>';
 }
 
 function buildDeviceItem(device) {
@@ -534,19 +562,64 @@ function buildDeviceItem(device) {
 	return item;
 }
 
-async function updateConnectedDevices() {
+function buildDeviceDetailCard(device) {
+	const card = document.createElement("article");
+	card.className = "device-detail-card panel";
+
+	const deviceType = String(device.type || "host").toLowerCase();
+	const name = String(device.name || device.ip || "Unknown");
+	const latency = device.latency !== null && device.latency !== undefined ? `${device.latency}ms` : "Offline/Timed Out";
+	const state = String(device.state || "Active");
+
+	card.innerHTML = `
+		<div class="device-detail-header">
+			<div class="device-detail-icon">${getDeviceIconSvg(deviceType)}</div>
+			<div class="device-detail-info">
+				<p class="device-detail-name">${name.toUpperCase()}</p>
+				<p class="device-detail-ip">${device.ip}</p>
+			</div>
+		</div>
+		<div class="device-detail-stats">
+			<div class="device-stat-item">
+				<span class="device-stat-label">STATUS</span>
+				<span class="device-stat-value">${state.toUpperCase()}</span>
+			</div>
+			<div class="device-stat-item">
+				<span class="device-stat-label">LATENCY</span>
+				<span class="device-stat-value">${latency}</span>
+			</div>
+			<div class="device-stat-item">
+				<span class="device-stat-label">INTERFACE TYPE</span>
+				<span class="device-stat-value">${device.entry_type?.toUpperCase() || "UNKNOWN"}</span>
+			</div>
+			<div class="device-stat-item">
+				<span class="device-stat-label">DEVICE TYPE</span>
+				<span class="device-stat-value">${deviceType.toUpperCase()}</span>
+			</div>
+		</div>
+		<div class="device-detail-mac">${device.mac}</div>
+	`;
+
+	return card;
+}
+
+async function updateConnectedDevices(options = {}) {
 	if (!connectedDevicesListElement || !protectedDevicesStatusElement) {
 		return;
 	}
 
 	try {
 		devicesRefreshCounter += 1;
-		const forceRefresh = devicesRefreshCounter % 3 === 0;
+		const forceRefresh = options.force === true || devicesRefreshCounter % 3 === 0;
 		const devicesData = await fetchConnectedDevices({ refresh: forceRefresh });
 		const devices = Array.isArray(devicesData.devices) ? devicesData.devices : [];
 
 		protectedDevicesStatusElement.textContent = String(devices.length);
+		if (devicesTotalCountElement) devicesTotalCountElement.textContent = String(devices.length);
+		if (devicesLastScanElement) devicesLastScanElement.textContent = devicesData.scan_time || "--:--:--";
+
 		connectedDevicesListElement.innerHTML = "";
+		if (devicesPageListElement) devicesPageListElement.innerHTML = "";
 
 		if (devices.length === 0) {
 			const emptyItem = document.createElement("article");
@@ -560,15 +633,30 @@ async function updateConnectedDevices() {
 				</div>
 			`;
 			connectedDevicesListElement.append(emptyItem);
+
+			if (devicesPageListElement) {
+				const emptyDetail = emptyItem.cloneNode(true);
+				emptyDetail.className = "device-detail-card panel offline";
+				devicesPageListElement.append(emptyDetail);
+			}
 			return;
 		}
 
-		for (const device of devices.slice(0, 12)) {
-			connectedDevicesListElement.append(buildDeviceItem(device));
+		for (const device of devices) {
+			// Dashboard list (limit to 12)
+			if (connectedDevicesListElement.children.length < 12) {
+				connectedDevicesListElement.append(buildDeviceItem(device));
+			}
+
+			// Detailed page
+			if (devicesPageListElement) {
+				devicesPageListElement.append(buildDeviceDetailCard(device));
+			}
 		}
 	} catch (error) {
 		protectedDevicesStatusElement.textContent = "0";
 		connectedDevicesListElement.innerHTML = "";
+		if (devicesPageListElement) devicesPageListElement.innerHTML = "";
 
 		const errorItem = document.createElement("article");
 		errorItem.className = "device-item offline";
@@ -585,24 +673,31 @@ async function updateConnectedDevices() {
 }
 
 function appendAlert(alertEntry) {
-	if (!alertListElement) {
-		return;
-	}
-
 	const signature = buildAlertSignature(alertEntry);
 	if (dismissedAlertSignatures.has(signature)) {
 		return;
 	}
 
-	const card = buildAlertCard(alertEntry);
-	alertListElement.append(card);
-	while (alertListElement.children.length > MAX_ALERT_ROWS) {
-		alertListElement.removeChild(alertListElement.lastElementChild);
-	}
+	[alertListElement, alertsPageListElement].forEach((container) => {
+		if (!container) {
+			return;
+		}
+
+		if (container.firstElementChild?.classList.contains("placeholder")) {
+			container.innerHTML = "";
+		}
+
+		const card = buildAlertCard(alertEntry);
+		container.append(card);
+
+		while (container.children.length > MAX_ALERT_ROWS) {
+			container.removeChild(container.lastElementChild);
+		}
+	});
 }
 
 async function loadRecentAlerts() {
-	if (!alertListElement) {
+	if (!alertListElement && !alertsPageListElement) {
 		return;
 	}
 
@@ -612,19 +707,18 @@ async function loadRecentAlerts() {
 		const alerts = Array.isArray(recentData.alerts) ? recentData.alerts : [];
 		let visibleAlerts = 0;
 		for (let index = alerts.length - 1; index >= 0; index -= 1) {
-			const beforeCount = alertListElement.children.length;
 			appendAlert(alerts[index]);
-			if (alertListElement.children.length > beforeCount) {
-				visibleAlerts += 1;
-			}
+			visibleAlerts += 1;
 		}
 
 		if (visibleAlerts === 0) {
-			renderAlertsPlaceholder("No alerts yet", "info");
+			renderAlertsPlaceholder("No alerts yet", "info", alertListElement);
+			renderAlertsPlaceholder("No alerts yet", "info", alertsPageListElement);
 		}
 	} catch (error) {
 		clearAlerts();
-		renderAlertsPlaceholder("Unable to load recent alerts", "warn");
+		renderAlertsPlaceholder("Unable to load recent alerts", "warn", alertListElement);
+		renderAlertsPlaceholder("Unable to load recent alerts", "warn", alertsPageListElement);
 	}
 }
 
@@ -661,6 +755,25 @@ async function connectLiveAlerts() {
 			try {
 				const alertEntry = JSON.parse(event.data);
 				prependAlert(alertEntry);
+
+				// Update Antivirus UI if the alert came from the scanner
+				if (alertEntry.log_type === "ANTIVIRUS") {
+					if (scannerThreatsCountElement) {
+						scannerThreatsCountElement.textContent = String(Number(scannerThreatsCountElement.textContent) + 1);
+					}
+					if (scannerLogListElement) {
+						const row = document.createElement("p");
+						row.className = "log-row";
+						const timeSpan = document.createElement("span");
+						timeSpan.className = "log-time";
+						timeSpan.textContent = alertEntry.time;
+						const tagSpan = document.createElement("span");
+						tagSpan.className = "tag warn";
+						tagSpan.textContent = "[THREAT]";
+						row.append(timeSpan, " ", tagSpan, ` Found: ${alertEntry.title} - ${alertEntry.description}`);
+						scannerLogListElement.prepend(row);
+					}
+				}
 			} catch (parseError) {
 				prependAlert({
 					time: "--:--:--",
@@ -827,6 +940,37 @@ if (logsRefreshButtonElement) {
 	});
 }
 
+if (alertsRefreshButtonElement) {
+	alertsRefreshButtonElement.addEventListener("click", async () => {
+		await loadRecentAlerts();
+	});
+}
+
+if (alertsClearButtonElement) {
+	alertsClearButtonElement.addEventListener("click", () => {
+		if (alertListElement) {
+			alertListElement.innerHTML = "";
+			renderAlertsPlaceholder("Dashboard cleared", "info", alertListElement);
+		}
+	});
+}
+
+if (devicesRefreshButtonElement) {
+	devicesRefreshButtonElement.addEventListener("click", async () => {
+		devicesRefreshButtonElement.disabled = true;
+		devicesRefreshButtonElement.textContent = "Scanning...";
+		await updateConnectedDevices({ force: true });
+		devicesRefreshButtonElement.disabled = false;
+		devicesRefreshButtonElement.textContent = "Full Rescan";
+	});
+}
+
+if (dashboardDevicesPanel) {
+	dashboardDevicesPanel.addEventListener("click", () => {
+		setActiveView("devices");
+	});
+}
+
 for (const navItem of navItems) {
 	navItem.addEventListener("click", (event) => {
 		event.preventDefault();
@@ -907,4 +1051,4 @@ connectLiveLogs();
 loadRecentAlerts();
 connectLiveAlerts();
 updateConnectedDevices();
-setInterval(updateConnectedDevices, 10000);
+setInterval(updateConnectedDevices, 60000);

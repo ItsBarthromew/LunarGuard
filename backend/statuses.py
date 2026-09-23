@@ -5,6 +5,7 @@ import subprocess
 import ipaddress
 import time
 import threading
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -71,15 +72,28 @@ def _is_broadcast_or_multicast(ip_address: str, mac_address: str) -> bool:
 
 
 def _infer_device_type(hostname: str, ip_address: str) -> str:
-    lowered = f"{hostname} {ip_address}".lower()
-    if ip_address.endswith(".1"):
+    name = hostname.lower()
+    
+    # 1. Infrastructure (Primary Router)
+    if ip_address.endswith(".1") or name == "fritz.box" or name == "fritz" or name == "gateway":
         return "router"
-    if any(token in lowered for token in ["iphone", "android", "pixel", "samsung", "mobile"]):
+    
+    # 2. Mobile Devices (Prioritize over generic fritz domain noise)
+    mobile_tokens = [
+        "iphone", "android", "pixel", "samsung", "mobile", 
+        "galaxy", "sm-a", "sm-s", "sm-g", "sm-n", "huawei", "xiaomi", "redmi", "oppo", "vivo", "oneplus"
+    ]
+    if any(token in name for token in mobile_tokens):
         return "mobile"
-    if any(token in lowered for token in ["router", "gateway", "fritz", "tplink", "netgear"]):
-        return "router"
-    if any(token in lowered for token in ["tv", "roku", "chromecast", "firetv"]):
+    
+    # 3. Media Devices
+    if any(token in name for token in ["tv", "roku", "chromecast", "firetv", "appletv", "smart-tv", "kodi"]):
         return "media"
+    
+    # 4. Other Networking Gear
+    if any(token in name for token in ["router", "tplink", "netgear", "unifi", "ubnt", "switch", "hub"]):
+        return "router"
+
     return "host"
 
 
@@ -124,33 +138,45 @@ def _iter_probe_targets(max_hosts_per_subnet: int = 254) -> list[str]:
     return sorted(targets)
 
 
-def _probe_host(ip_address: str, timeout_ms: int = 150) -> bool:
+def _probe_host(ip_address: str, timeout_ms: int = 250) -> float | None:
+    """Ping a host and return latency in ms, or None if unreachable."""
     try:
+        # Use -n 1 for Windows, -c 1 for Linux
+        count_flag = "-n" if socket.os.name == "nt" else "-c"
+        start = time.time()
         result = subprocess.run(
-            ["ping", "-n", "1", "-w", str(timeout_ms), ip_address],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            ["ping", count_flag, "1", "-w", str(timeout_ms), ip_address],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
             check=False,
         )
-        return result.returncode == 0
+        if result.returncode == 0:
+            return round((time.time() - start) * 1000, 1)
     except Exception:
-        return False
+        pass
+    return None
 
 
 def _active_arp_warmup():
     targets = _iter_probe_targets(max_hosts_per_subnet=254)
     if not targets:
-        return
+        return {}
 
+    latencies = {}
     # Parallel pings populate local ARP cache with reachable peers.
     max_workers = min(64, max(8, len(targets) // 4))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(_probe_host, target) for target in targets]
-        for future in as_completed(futures):
+        future_to_ip = {executor.submit(_probe_host, target): target for target in targets}
+        for future in as_completed(future_to_ip):
+            ip = future_to_ip[future]
             try:
-                future.result()
+                latency = future.result()
+                if latency is not None:
+                    latencies[ip] = latency
             except Exception:
                 pass
+    return latencies
 
 class Statuses:
 
@@ -185,10 +211,11 @@ class Statuses:
             if cached_age < max(5, int(cache_ttl_seconds)):
                 return DISCOVERY_CACHE["payload"]
 
+        latencies = {}
         if active_probe:
-            _active_arp_warmup()
+            latencies = _active_arp_warmup()
 
-        devices: list[dict[str, str]] = []
+        devices: list[dict[str, str | float | None]] = []
         seen_ips: set[str] = set()
 
         local_ipv4s: set[str] = set()
@@ -239,7 +266,8 @@ class Statuses:
             try:
                 resolved_name = socket.gethostbyaddr(ip_address)[0]
                 if resolved_name:
-                    hostname = resolved_name
+                    # Aggressively strip local domain suffixes (.fritz.box, .local, .lan, etc.)
+                    hostname = re.sub(r'\.(fritz\.box|local|lan|home|gateway)\.?$', '', resolved_name, flags=re.IGNORECASE)
             except Exception:
                 pass
 
@@ -251,6 +279,7 @@ class Statuses:
                     "state": "Active" if entry_type == "dynamic" else "Known",
                     "type": _infer_device_type(hostname=hostname, ip_address=ip_address),
                     "entry_type": entry_type,
+                    "latency": latencies.get(ip_address),
                 }
             )
 
@@ -258,6 +287,7 @@ class Statuses:
         payload = {
             "count": len(devices),
             "devices": devices,
+            "scan_time": datetime.now().strftime("%H:%M:%S"),
         }
         with DISCOVERY_CACHE_LOCK:
             DISCOVERY_CACHE["timestamp"] = time.time()

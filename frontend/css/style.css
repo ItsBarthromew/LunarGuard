@@ -392,6 +392,15 @@ body {
 	border-radius: var(--radius-lg);
 }
 
+.devices-panel {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.devices-panel:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 15px 30px rgba(34, 34, 34, 0.12);
+}
+
 .logs-toolbar {
 	display: flex;
 	align-items: center;
@@ -450,10 +459,106 @@ body {
 	opacity: 0.45;
 }
 
-.device-icon {
-	width: 28px;
-	height: 28px;
-	color: #737373;
+.devices-page-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 16px;
+	margin-top: 16px;
+	padding: 4px;
+}
+
+.device-detail-card {
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	transition: transform 0.2s ease;
+}
+
+.device-detail-card:hover {
+	transform: translateY(-4px);
+}
+
+.device-detail-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.device-detail-icon {
+	width: 40px;
+	height: 40px;
+	color: var(--blackcolor);
+}
+
+.device-detail-info {
+	flex: 1;
+}
+
+.device-detail-name {
+	margin: 0;
+	font-family: "ClarendonBold", "Clarendon", serif;
+	font-size: 16px;
+	color: var(--blackcolor);
+}
+
+.device-detail-ip {
+	margin: 2px 0 0;
+	font-size: 12px;
+	color: var(--greycolor);
+}
+
+.device-detail-stats {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+	background: rgba(0, 0, 0, 0.03);
+	padding: 8px;
+	border-radius: 8px;
+}
+
+.device-stat-item {
+	display: flex;
+	flex-direction: column;
+}
+
+.device-stat-label {
+	font-size: 9px;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.device-stat-value {
+	font-family: "ClarendonBold", "Clarendon", serif;
+	font-size: 11px;
+	color: var(--greycolor);
+}
+
+.scanner-page-grid {
+	display: grid;
+	grid-template-columns: 280px 1fr;
+	gap: 16px;
+	margin-top: 16px;
+}
+
+.scanner-stats {
+	display: grid;
+	gap: 16px;
+	padding: 16px;
+	align-content: start;
+}
+
+.scanner-log {
+	padding: 16px;
+}
+
+.scanner-log .log-list {
+	height: calc(100vh - 350px);
+	min-height: 400px;
+}
+
+.stat-value.red {
+	color: var(--negativecolor);
 }
 
 .device-name {
@@ -521,6 +626,11 @@ body {
 	height: 300px;
 	overflow-y: auto;
 	padding-right: 4px;
+}
+
+.alert-stack.large-stack {
+	height: calc(100vh - 250px);
+	min-height: 520px;
 }
 
 .alert-card {
@@ -647,7 +757,8 @@ body {
 	font-family: "ClarendonBold", "Clarendon", serif;
 	font-size: 13px;
 	text-transform: uppercase;
-	animation: rise-in 1s ease both;
+	animation: rise-in 0.5s ease both;
+	margin-bottom: 4px;
 }
 
 .status-strip .ok {

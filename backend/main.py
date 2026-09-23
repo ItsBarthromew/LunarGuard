@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 import threading
+import time
+from scanner import start_realtime_scanner
 from collections import deque
 from datetime import datetime, timezone
 from enum import IntEnum
@@ -160,11 +162,30 @@ def _start_log_monitor(loop: asyncio.AbstractEventLoop):
             }
         )
 
+        last_heartbeat = datetime.now()
+
         try:
-            monitor_security_events(
-                on_log=on_log,
-                poll_interval=0.5,
-            )
+            # Modified monitor loop to include heartbeats
+            def wrapped_on_log(entry):
+                nonlocal last_heartbeat
+                last_heartbeat = datetime.now()
+                on_log(entry)
+
+            # We use a shorter poll interval and check for heartbeats
+            while True:
+                monitor_security_events(
+                    on_log=wrapped_on_log,
+                    poll_interval=0.5,
+                )
+                
+                # If it returns, something went wrong or it finished (which it shouldn't)
+                on_log({
+                    "time": datetime.now().strftime("%H:%M:%S"),
+                    "tag": "[WARN]",
+                    "msg": "Log monitor loop returned unexpectedly, restarting...",
+                })
+                time.sleep(1)
+
         except Exception as exc:
             on_log(
                 {
@@ -181,6 +202,16 @@ def _start_log_monitor(loop: asyncio.AbstractEventLoop):
     worker.start()
 
 
+def _start_antivirus_scanner(loop: asyncio.AbstractEventLoop):
+    def on_alert(alert_entry):
+        loop.call_soon_threadsafe(_broadcast_alert, alert_entry)
+
+    try:
+        start_realtime_scanner(on_alert=on_alert)
+    except Exception as exc:
+        print(f"Failed to start Antivirus scanner: {exc}")
+
+
 @app.on_event("startup")
 async def startup_event():
     global LOG_THREAD_STARTED
@@ -189,7 +220,9 @@ async def startup_event():
         return
 
     LOG_THREAD_STARTED = True
-    _start_log_monitor(asyncio.get_running_loop())
+    loop = asyncio.get_running_loop()
+    _start_log_monitor(loop)
+    _start_antivirus_scanner(loop)
 
 
 @app.get("/health")
@@ -308,7 +341,8 @@ async def logs_websocket(websocket: WebSocket):
     event_queue = asyncio.Queue(maxsize=500)
     LOG_SUBSCRIBERS.add(event_queue)
 
-    for log_entry in RECENT_LOGS:
+    recent_logs = list(RECENT_LOGS)
+    for log_entry in recent_logs:
         await websocket.send_text(json.dumps(log_entry))
 
     await websocket.send_text(
@@ -338,7 +372,8 @@ async def alerts_websocket(websocket: WebSocket):
     event_queue = asyncio.Queue(maxsize=500)
     ALERT_SUBSCRIBERS.add(event_queue)
 
-    for alert_entry in RECENT_ALERTS:
+    recent_alerts = list(RECENT_ALERTS)
+    for alert_entry in recent_alerts:
         await websocket.send_text(json.dumps(alert_entry))
 
     try:

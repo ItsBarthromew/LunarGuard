@@ -50,7 +50,7 @@
 					<span>FIREWALL</span>
 				</a>
 				<a href="#" class="nav-item navigation-text" data-view="antivirus">
-					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2h4l.7 2.1c.7.2 1.3.5 1.9.9l2-.8 2.8 2.8-.8 2c.4.6.7 1.2.9 1.9L24 14v4l-2.1.7a8 8 0 0 1-.9 1.9l.8 2-2.8 2.8-2-.8a8 8 0 0 1-1.9.9L14 26h-4l-.7-2.1a8 8 0 0 1-1.9-.9l-2 .8L2.6 21l.8-2a8 8 0 0 1-.9-1.9L.4 16v-4l2.1-.7a8 8 0 0 1 .9-1.9l-.8-2L5.4 4.6l2 .8a8 8 0 0 1 1.9-.9z" transform="scale(0.8) translate(2 2)"/><circle cx="12" cy="12" r="3.2" fill="#f4f4f4"/></svg>
+					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
 					<span>ANTIVIRUS</span>
 				</a>
 				<a href="#" class="nav-item navigation-text" data-view="settings">
@@ -78,6 +78,14 @@
 					<div class="user-avatar" aria-hidden="true"></div>
 				</div>
 			</header>
+
+			<div class="status-strip panel" aria-label="System Status">
+				<span class="ok" id="memory-status">MEM: --%</span>
+				<span class="warn" id="cpu-status">CPU: --%</span>
+				<span class="ok" id="connection-status">STATUS: ONLINE</span>
+				<span class="ok" id="health-status">HEALTH: --</span>
+				<span class="ok" id="latency-status">LATENCY: --MS</span>
+			</div>
 
 			<section class="content-grid app-view is-visible" data-view="dashboard" aria-label="Operational Panels">
 				<div class="left-stack">
@@ -109,7 +117,7 @@
 						</div>
 					</section>
 
-					<section class="devices-panel panel">
+					<section class="devices-panel panel" id="dashboard-devices-panel" style="cursor: pointer;" title="Click to view all devices">
 						<p class="heading-text">CONNECTED DEVICES</p>
 						<div class="device-list" id="connected-devices-list">
 							<article class="device-item">
@@ -182,8 +190,9 @@
 			<section class="view-panel panel app-view" data-view="logs" aria-label="Logs View">
 				<div class="view-header">
 					<div>
-						<p class="heading-text">LOGS CONSOLE</p>
+						<p class="heading-text">LOGS CONSOLE <span id="logs-stream-status" class="tag info" style="margin-left: 10px; font-size: 10px;">CONNECTING</span></p>
 						<p class="view-subtitle">Live Windows event stream connected to the backend websocket.</p>
+						<p class="view-subtitle" style="font-size: 10px; opacity: 0.7;">URL: <span id="logs-websocket-url">--</span> | Recent: <span id="logs-recent-count">0</span></p>
 					</div>
 				</div>
 
@@ -201,13 +210,70 @@
 				</div>
 			</section>
 
-			<footer class="status-strip panel" aria-label="System Status">
-				<span class="ok" id="memory-status">MEM: --%</span>
-				<span class="warn" id="cpu-status">CPU: --%</span>
-				<span class="ok" id="connection-status">STATUS: ONLINE</span>
-				<span class="ok" id="health-status">HEALTH: --</span>
-				<span class="ok" id="latency-status">LATENCY: --MS</span>
-			</footer>
+			<section class="view-panel panel app-view" data-view="alerts" aria-label="Alerts View">
+				<div class="view-header">
+					<div>
+						<p class="heading-text">SECURITY ALERTS</p>
+						<p class="view-subtitle">Detailed history of detected security events and system anomalies.</p>
+					</div>
+					<div class="logs-toolbar-actions">
+						<button class="mini-btn red" id="alerts-clear-btn" type="button">Clear Dashboard List</button>
+						<button class="mini-btn" id="alerts-refresh-btn" type="button">Refresh</button>
+					</div>
+				</div>
+
+				<div class="alerts-page-content">
+					<div class="alert-stack large-stack" id="alerts-page-list"></div>
+				</div>
+			</section>
+
+			<section class="view-panel panel app-view" data-view="devices" aria-label="Devices View">
+				<div class="view-header">
+					<div>
+						<p class="heading-text">CONNECTED DEVICES</p>
+						<p class="view-subtitle">Detailed inventory of all hardware detected on the local network.</p>
+						<p class="view-subtitle" style="font-size: 10px; opacity: 0.7;">Last Scan: <span id="devices-last-scan">--</span> | Total: <span id="devices-total-count">0</span></p>
+					</div>
+					<div class="logs-toolbar-actions">
+						<button class="mini-btn blue" id="devices-refresh-btn" type="button">Full Rescan</button>
+					</div>
+				</div>
+
+				<div class="devices-page-grid" id="devices-page-list">
+					<!-- Detailed device cards will be injected here -->
+				</div>
+			</section>
+			<section class="view-panel panel app-view" data-view="antivirus" aria-label="Antivirus View">
+				<div class="view-header">
+					<div>
+						<p class="heading-text">REAL-TIME ANTIVIRUS</p>
+						<p class="view-subtitle">Active monitoring of Downloads and Desktop for malicious files.</p>
+					</div>
+					<div class="logs-toolbar-actions">
+						<span id="scanner-status" class="tag info">SHIELD ACTIVE</span>
+					</div>
+				</div>
+
+				<div class="scanner-page-grid">
+					<section class="scanner-stats panel">
+						<div class="stat-card">
+							<p class="heading-text">FILES SCANNED</p>
+							<p class="stat-value" id="scanner-files-count">0</p>
+						</div>
+						<div class="stat-card">
+							<p class="heading-text">THREATS BLOCKED</p>
+							<p class="stat-value red" id="scanner-threats-count">0</p>
+						</div>
+					</section>
+
+					<section class="scanner-log panel">
+						<p class="heading-text">SCANNER ACTIVITY</p>
+						<div class="log-list normal-text" id="scanner-log-list">
+							<p class="log-row"><span class="log-time">--:--:--</span> <span class="tag info">[INFO]</span> Antivirus engine initialized...</p>
+						</div>
+					</section>
+				</div>
+			</section>
 		</main>
 	</div>
 	<script src="js/api.js" defer></script>
