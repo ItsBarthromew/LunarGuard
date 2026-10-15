@@ -36,6 +36,12 @@ const aiClearButtonElement = document.getElementById("ai-clear-btn");
 const aiResultContentElement = document.getElementById("ai-result-content");
 const aiEngineStatusElement = document.getElementById("ai-engine-status");
 const aiInputModeRadios = Array.from(document.querySelectorAll("input[name='ai-input-mode']"));
+const logsFilterTagElement = document.getElementById("logs-filter-tag");
+const logsFilterSourceElement = document.getElementById("logs-filter-source");
+const logsFilterEventIdElement = document.getElementById("logs-filter-eventid");
+const logsFilterKeywordElement = document.getElementById("logs-filter-keyword");
+const logsFilterApplyButtonElement = document.getElementById("logs-filter-apply-btn");
+const logsFilterResetButtonElement = document.getElementById("logs-filter-reset-btn");
 const navItems = Array.from(document.querySelectorAll(".nav-item[data-view]"));
 const appViews = Array.from(document.querySelectorAll(".app-view"));
 
@@ -130,8 +136,70 @@ function scheduleRecentLogsRetry() {
 	recentLogsRetryDelayMs = Math.min(recentLogsRetryDelayMs * 1.5, MAX_RECENT_LOGS_RETRY_DELAY_MS);
 }
 
+function matchesLogFilter(logEntry) {
+	const selectedTag = logsFilterTagElement ? logsFilterTagElement.value.trim() : "";
+	const sourceQuery = logsFilterSourceElement ? logsFilterSourceElement.value.trim().toLowerCase() : "";
+	const eventIdQuery = logsFilterEventIdElement ? logsFilterEventIdElement.value.trim() : "";
+	const keywordQuery = logsFilterKeywordElement ? logsFilterKeywordElement.value.trim().toLowerCase() : "";
+
+	if (selectedTag && logEntry.tag !== selectedTag) {
+		return false;
+	}
+
+	if (sourceQuery) {
+		const src = String(logEntry.source || "").toLowerCase();
+		if (!src.includes(sourceQuery)) {
+			return false;
+		}
+	}
+
+	if (eventIdQuery) {
+		const eid = String(logEntry.event_id || "");
+		if (!eid.includes(eventIdQuery)) {
+			return false;
+		}
+	}
+
+	if (keywordQuery) {
+		const msg = String(logEntry.msg || "").toLowerCase();
+		const raw = JSON.stringify(logEntry.raw_message || "").toLowerCase();
+		const src = String(logEntry.source || "").toLowerCase();
+		if (!msg.includes(keywordQuery) && !raw.includes(keywordQuery) && !src.includes(keywordQuery)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function renderFilteredLogsPage() {
+	if (!logsPageListElement) {
+		return;
+	}
+
+	logsPageListElement.innerHTML = "";
+	const filtered = recentLogsCache.filter(matchesLogFilter);
+
+	if (filtered.length === 0) {
+		renderLogsPagePlaceholder("No logs match the current filter criteria", "info");
+		return;
+	}
+
+	for (const logEntry of filtered) {
+		const row = buildLogRow(logEntry);
+		logsPageListElement.append(row);
+		if (logsPageListElement.children.length >= 200) {
+			break;
+		}
+	}
+}
+
 function appendLogsPageRow(logEntry) {
 	if (!logsPageListElement) {
+		return;
+	}
+
+	if (!matchesLogFilter(logEntry)) {
 		return;
 	}
 
@@ -151,24 +219,13 @@ function renderRecentLogs(logs) {
 
 	if (liveLogListElement) {
 		liveLogListElement.replaceChildren();
-	}
-
-	if (logsPageListElement) {
-		logsPageListElement.replaceChildren();
-	}
-
-	if (recentLogsCache.length === 0) {
-		renderLogsPagePlaceholder("No recent logs available", "info");
-		return;
-	}
-
-	for (const logEntry of recentLogsCache) {
-		appendLogToViews(logEntry);
-	}
-
-	if (liveLogListElement) {
+		for (const logEntry of recentLogsCache) {
+			appendLiveLog(logEntry);
+		}
 		liveLogListElement.scrollTop = 0;
 	}
+
+	renderFilteredLogsPage();
 }
 
 function formatCpuValue(cpuValue) {
@@ -768,21 +825,31 @@ async function connectLiveAlerts() {
 				prependAlert(alertEntry);
 
 				// Update Antivirus UI if the alert came from the scanner
-				if (alertEntry.log_type === "ANTIVIRUS") {
-					if (scannerThreatsCountElement) {
+				if (alertEntry.log_type === "ANTIVIRUS" || alertEntry.log_type === "ANTIVIRUS_SCAN") {
+					if (scannerFilesCountElement) {
+						scannerFilesCountElement.textContent = String(Number(scannerFilesCountElement.textContent) + 1);
+					}
+					if (alertEntry.log_type === "ANTIVIRUS" && scannerThreatsCountElement) {
 						scannerThreatsCountElement.textContent = String(Number(scannerThreatsCountElement.textContent) + 1);
 					}
 					if (scannerLogListElement) {
+						if (scannerLogListElement.firstElementChild?.textContent.includes("Antivirus engine initialized")) {
+							scannerLogListElement.innerHTML = "";
+						}
 						const row = document.createElement("p");
 						row.className = "log-row";
 						const timeSpan = document.createElement("span");
 						timeSpan.className = "log-time";
 						timeSpan.textContent = alertEntry.time;
 						const tagSpan = document.createElement("span");
-						tagSpan.className = "tag warn";
-						tagSpan.textContent = "[THREAT]";
-						row.append(timeSpan, " ", tagSpan, ` Found: ${alertEntry.title} - ${alertEntry.description}`);
+						const isThreat = alertEntry.log_type === "ANTIVIRUS";
+						tagSpan.className = isThreat ? "tag warn" : "tag info";
+						tagSpan.textContent = isThreat ? "[THREAT]" : "[CLEAN]";
+						row.append(timeSpan, " ", tagSpan, ` ${alertEntry.title} - ${alertEntry.description}`);
 						scannerLogListElement.prepend(row);
+						while (scannerLogListElement.children.length > 150) {
+							scannerLogListElement.removeChild(scannerLogListElement.lastElementChild);
+						}
 					}
 				}
 			} catch (parseError) {
@@ -1225,6 +1292,22 @@ loadRecentAlerts();
 connectLiveAlerts();
 updateConnectedDevices();
 setInterval(updateConnectedDevices, 60000);
+
+if (logsFilterApplyButtonElement) {
+	logsFilterApplyButtonElement.addEventListener("click", () => {
+		renderFilteredLogsPage();
+	});
+}
+
+if (logsFilterResetButtonElement) {
+	logsFilterResetButtonElement.addEventListener("click", () => {
+		if (logsFilterTagElement) logsFilterTagElement.value = "";
+		if (logsFilterSourceElement) logsFilterSourceElement.value = "";
+		if (logsFilterEventIdElement) logsFilterEventIdElement.value = "";
+		if (logsFilterKeywordElement) logsFilterKeywordElement.value = "";
+		renderFilteredLogsPage();
+	});
+}
 
 const liveUserMetaElement = document.getElementById("live-user-meta");
 

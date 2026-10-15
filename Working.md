@@ -23,7 +23,7 @@ This document outlines all operational features, system metrics, and architectur
 
 ---
 
-## 2. AI Security Scanner (MobileBERT + Heuristics)
+## 2. Email & Log Checker (MobileBERT + Whitelist + Heuristics)
 
 ### AI Email & Log Classifier (`/ai/analyze-email`, `/ai/analyze-log`)
 - **What it does:** Allows pasting email bodies, sender addresses, subjects, or system log snippets to instantly classify security risk.
@@ -56,5 +56,23 @@ This document outlines all operational features, system metrics, and architectur
 
 ---
 
-## 6. Automatic Frontend Hosting & Browser Launch
+## 5. Log Filtering Toolbar (Logs Page Only)
+- **What it does:** Provides dedicated filtering controls exclusively on the **Logs** page.
+- **Filter Parameters:**
+  - **Severity / Tag:** Filter by log category (`[AUTH]`, `[PROC]`, `[CRED]`, `[SYS]`, `[WARN]`, `[ERROR]`, `[INFO]`).
+  - **Source:** Filter by event source name (e.g., `Security`, `Application`, `DCOM`).
+  - **Event ID:** Filter by exact or partial Windows Event ID (e.g., `4625`, `1102`).
+  - **Keyword Search:** Search terms within log messages or raw data.
+- **Controls:** Includes **Filter** and **Reset** buttons to instantly update the active log stream.
+
+---
+
+## 6. Antivirus Shield & Scanned Files View
+- **What it does:** Real-time monitoring of **Downloads, Desktop, and Documents** folders for malicious files.
+- **Hash Signature Engine:** Utilizes a robust database of **3,500+ known malware and threat SHA-256 hashes** (`signatures.json`) alongside double-extension heuristic detection.
+- **UI & Features:** Displays files scanned count, threats blocked count, shield active status, and real-time scanner activity logs showing detected malware results, hashes, and file paths.
+
+---
+
+## 7. Automatic Frontend Hosting & Browser Launch
 - **What it does:** When `main.py` is executed, the backend FastAPI server automatically mounts the frontend dashboard static files (`/`) and spins up a background thread to launch the user's default web browser directly to `http://localhost:8000/`.

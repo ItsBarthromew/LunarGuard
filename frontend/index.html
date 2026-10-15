@@ -38,14 +38,6 @@
 					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-1-4a1 1 0 0 1-1-1V7a1 1 0 0 1 2 0v4.5a1 1 0 0 1-1 1z"/></svg>
 					<span>EMAIL & LOG CHECKER</span>
 				</a>
-				<a href="#" class="nav-item navigation-text" data-view="emails">
-					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2h4l.7 2.1c.7.2 1.3.5 1.9.9l2-.8 2.8 2.8-.8 2c.4.6.7 1.2.9 1.9L24 14v4l-2.1.7a8 8 0 0 1-.9 1.9l.8 2-2.8 2.8-2-.8a8 8 0 0 1-1.9.9L14 26h-4l-.7-2.1a8 8 0 0 1-1.9-.9l-2 .8L2.6 21l.8-2a8 8 0 0 1-.9-1.9L.4 16v-4l2.1-.7a8 8 0 0 1 .9-1.9l-.8-2L5.4 4.6l2 .8a8 8 0 0 1 1.9-.9z" transform="scale(0.8) translate(2 2)"/><circle cx="12" cy="12" r="3.2" fill="#f4f4f4"/></svg>
-					<span>EMAILS</span>
-				</a>
-				<a href="#" class="nav-item navigation-text" data-view="firewall">
-					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2h4l.7 2.1c.7.2 1.3.5 1.9.9l2-.8 2.8 2.8-.8 2c.4.6.7 1.2.9 1.9L24 14v4l-2.1.7a8 8 0 0 1-.9 1.9l.8 2-2.8 2.8-2-.8a8 8 0 0 1-1.9.9L14 26h-4l-.7-2.1a8 8 0 0 1-1.9-.9l-2 .8L2.6 21l.8-2a8 8 0 0 1-.9-1.9L.4 16v-4l2.1-.7a8 8 0 0 1 .9-1.9l-.8-2L5.4 4.6l2 .8a8 8 0 0 1 1.9-.9z" transform="scale(0.8) translate(2 2)"/><circle cx="12" cy="12" r="3.2" fill="#f4f4f4"/></svg>
-					<span>FIREWALL</span>
-				</a>
 				<a href="#" class="nav-item navigation-text" data-view="antivirus">
 					<svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
 					<span>ANTIVIRUS</span>
@@ -188,15 +180,52 @@
 				<div class="view-header">
 					<div>
 						<p class="heading-text">LOGS CONSOLE <span id="logs-stream-status" class="tag info" style="margin-left: 10px; font-size: 10px;">CONNECTING</span></p>
-						<p class="view-subtitle">Live Windows event stream connected to the backend websocket.</p>
+						<p class="view-subtitle">Live Windows event stream with filtering by severity, source, event ID, or keyword.</p>
 						<p class="view-subtitle" style="font-size: 10px; opacity: 0.7;">URL: <span id="logs-websocket-url">--</span> | Recent: <span id="logs-recent-count">0</span></p>
 					</div>
 				</div>
 
-				<div class="logs-page-grid">
+				<div class="logs-page-grid" style="display: grid; gap: 12px;">
+					<!-- Log Filter Toolbar -->
+					<div class="panel" style="padding: 12px; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+						<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
+							<label style="font-size: 10px; font-weight: bold; text-transform: uppercase;">Tag / Severity</label>
+							<select id="logs-filter-tag" style="background: #e7e7e7; border: 1px solid #ccc; padding: 6px 8px; border-radius: 8px; font-family: inherit; font-size: 12px; outline: none;">
+								<option value="">All Tags / Severities</option>
+								<option value="[AUTH]">[AUTH] Authentication</option>
+								<option value="[PROC]">[PROC] Process</option>
+								<option value="[CRED]">[CRED] Credential</option>
+								<option value="[SYS]">[SYS] System</option>
+								<option value="[WARN]">[WARN] Warning</option>
+								<option value="[ERROR]">[ERROR] Error</option>
+								<option value="[INFO]">[INFO] Info</option>
+							</select>
+						</div>
+
+						<div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
+							<label style="font-size: 10px; font-weight: bold; text-transform: uppercase;">Source</label>
+							<input type="text" id="logs-filter-source" placeholder="e.g. Security, DCOM" style="background: #e7e7e7; border: 1px solid #ccc; padding: 6px 8px; border-radius: 8px; font-family: inherit; font-size: 12px; outline: none;" />
+						</div>
+
+						<div style="display: flex; flex-direction: column; gap: 4px; width: 120px;">
+							<label style="font-size: 10px; font-weight: bold; text-transform: uppercase;">Event ID</label>
+							<input type="text" id="logs-filter-eventid" placeholder="e.g. 4625" style="background: #e7e7e7; border: 1px solid #ccc; padding: 6px 8px; border-radius: 8px; font-family: inherit; font-size: 12px; outline: none;" />
+						</div>
+
+						<div style="display: flex; flex-direction: column; gap: 4px; flex: 2; min-width: 180px;">
+							<label style="font-size: 10px; font-weight: bold; text-transform: uppercase;">Keyword Search</label>
+							<input type="text" id="logs-filter-keyword" placeholder="Search log message text..." style="background: #e7e7e7; border: 1px solid #ccc; padding: 6px 8px; border-radius: 8px; font-family: inherit; font-size: 12px; outline: none;" />
+						</div>
+
+						<div style="display: flex; gap: 6px; align-self: flex-end; padding-bottom: 2px;">
+							<button class="action-btn blue" id="logs-filter-apply-btn" type="button" style="padding: 6px 14px; font-size: 11px;">Filter</button>
+							<button class="action-btn red" id="logs-filter-reset-btn" type="button" style="padding: 6px 14px; font-size: 11px;">Reset</button>
+						</div>
+					</div>
+
 					<section class="logs-page-list panel">
 						<div class="logs-toolbar">
-							<p class="heading-text">RECENT LOGS</p>
+							<p class="heading-text">FILTERED LOGS</p>
 							<div class="logs-toolbar-actions">
 								<button class="mini-btn" id="logs-refresh-btn" type="button">Refresh</button>
 								<button class="mini-btn blue" id="logs-follow-btn" type="button" aria-pressed="true">Following Live</button>

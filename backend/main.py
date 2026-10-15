@@ -35,10 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
-
 
 RECENT_LOGS = deque(maxlen=1000)
 LOG_SUBSCRIBERS: set[asyncio.Queue] = set()
@@ -430,6 +426,11 @@ def analyze_log(
 ):
     """Analyze a log message for potential anomalies when users are away."""
     return AI_ASSISTANT.analyze_log(log_msg=msg, tag=tag)
+
+
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 def main():
