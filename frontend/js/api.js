@@ -158,3 +158,59 @@ async function fetchConnectedDevices(options = {}) {
 
 	return response.json();
 }
+
+async function fetchAiStatus() {
+	const response = await fetch(`${API_BASE_URL}/ai/status`, {
+		headers: {
+			Accept: "application/json",
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`AI status request failed: ${response.status}`);
+	}
+
+	return response.json();
+}
+
+async function analyzeEmailWithAi(subject, body, sender = "", recipient = "") {
+	const params = new URLSearchParams({
+		subject: subject || "",
+		body: body || "",
+		sender: sender || "",
+		recipient: recipient || "",
+	});
+
+	const response = await fetch(`${API_BASE_URL}/ai/analyze-email?${params.toString()}`, {
+		method: "POST",
+		headers: {
+			Accept: "application/json",
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`AI email analysis request failed: ${response.status}`);
+	}
+
+	return response.json();
+}
+
+async function analyzeLogWithAi(msg, tag = "[SYS]") {
+	const params = new URLSearchParams({
+		msg: msg || "",
+		tag: tag || "[SYS]",
+	});
+
+	const response = await fetch(`${API_BASE_URL}/ai/analyze-log?${params.toString()}`, {
+		method: "POST",
+		headers: {
+			Accept: "application/json",
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`AI log analysis request failed: ${response.status}`);
+	}
+
+	return response.json();
+}

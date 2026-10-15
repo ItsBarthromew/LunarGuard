@@ -27,6 +27,15 @@ const dashboardDevicesPanel = document.getElementById("dashboard-devices-panel")
 const scannerFilesCountElement = document.getElementById("scanner-files-count");
 const scannerThreatsCountElement = document.getElementById("scanner-threats-count");
 const scannerLogListElement = document.getElementById("scanner-log-list");
+const aiEmailFieldsElement = document.getElementById("ai-email-fields");
+const aiSubjectInputElement = document.getElementById("ai-subject-input");
+const aiSenderInputElement = document.getElementById("ai-sender-input");
+const aiTextInputElement = document.getElementById("ai-text-input");
+const aiAnalyzeButtonElement = document.getElementById("ai-analyze-btn");
+const aiClearButtonElement = document.getElementById("ai-clear-btn");
+const aiResultContentElement = document.getElementById("ai-result-content");
+const aiEngineStatusElement = document.getElementById("ai-engine-status");
+const aiInputModeRadios = Array.from(document.querySelectorAll("input[name='ai-input-mode']"));
 const navItems = Array.from(document.querySelectorAll(".nav-item[data-view]"));
 const appViews = Array.from(document.querySelectorAll(".app-view"));
 
@@ -78,6 +87,8 @@ function setActiveView(viewName) {
 		loadRecentAlerts();
 	} else if (viewName === "devices") {
 		updateConnectedDevices();
+	} else if (viewName === "ai") {
+		checkAiEngineStatus();
 	}
 }
 
@@ -978,6 +989,168 @@ for (const navItem of navItems) {
 	});
 }
 
+async function checkAiEngineStatus() {
+	if (!aiEngineStatusElement) {
+		return;
+	}
+
+	try {
+		const status = await fetchAiStatus();
+		if (status.is_loaded) {
+			aiEngineStatusElement.textContent = "MOBILEBERT ACTIVE";
+			aiEngineStatusElement.className = "tag auth";
+		} else {
+			aiEngineStatusElement.textContent = "RULE ENGINE ACTIVE";
+			aiEngineStatusElement.className = "tag info";
+		}
+	} catch (error) {
+		aiEngineStatusElement.textContent = "AI STANDBY";
+		aiEngineStatusElement.className = "tag warn";
+	}
+}
+
+function renderAiAnalysisResult(data) {
+	if (!aiResultContentElement) {
+		return;
+	}
+
+	const rating = Number(data.rating) || 2;
+	const verdict = data.verdict || (rating === 1 ? "Bad" : (rating === 3 ? "Potential Bad" : "Good"));
+	const statusCode = data.status_code || `${rating} - ${verdict}`;
+	const riskScore = Math.round((Number(data.risk_score) || 0) * 100);
+	const flags = Array.isArray(data.flags) ? data.flags : [];
+	const explanation = data.explanation || "";
+	const engine = data.ai_engine || "MobileBERT (google/mobilebert-uncased)";
+
+	let badgeClass = "status-2";
+	if (rating === 1) {
+		badgeClass = "status-1";
+	} else if (rating === 3) {
+		badgeClass = "status-3";
+	}
+
+	const flagsHtml = flags.length > 0
+		? `<div style="background: rgba(0,0,0,0.03); padding: 10px; border-radius: 8px;">
+				<p style="margin: 0 0 6px; font-size: 11px; font-weight: bold; text-transform: uppercase;">Detected Indicators & Flags:</p>
+				<ul style="margin: 0; padding-left: 18px; font-size: 11px; color: #444;">
+					${flags.map(f => `<li style="margin-bottom: 3px;">${f}</li>`).join("")}
+				</ul>
+		   </div>`
+		: `<div style="background: rgba(0,128,0,0.05); padding: 10px; border-radius: 8px; font-size: 11px; color: var(--positivecolor); font-weight: bold;">
+				✓ No threat or spam indicators detected. Content appears clean.
+		   </div>`;
+
+	aiResultContentElement.innerHTML = `
+		<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding-bottom: 12px; border-bottom: 1px solid var(--stroke);">
+			<span class="ai-verdict-badge ${badgeClass}">${statusCode}</span>
+			<p style="margin: 4px 0 0; font-family: 'ClarendonBold', serif; font-size: 13px; color: var(--blackcolor);">${explanation}</p>
+		</div>
+
+		<div style="display: flex; flex-direction: column; gap: 6px;">
+			<div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold;">
+				<span>THREAT / RISK SCORE</span>
+				<span>${riskScore}%</span>
+			</div>
+			<div style="width: 100%; height: 10px; background: #ddd; border-radius: 999px; overflow: hidden;">
+				<div style="width: ${riskScore}%; height: 100%; background: ${rating === 1 ? '#c33b31' : (rating === 3 ? '#caa03f' : '#008000')}; transition: width 0.4s ease;"></div>
+			</div>
+		</div>
+
+		${flagsHtml}
+
+		<div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: auto; padding-top: 8px; border-top: 1px solid var(--stroke);">
+			<span>AI Engine: ${engine}</span>
+			<span>MobileBERT Uncased</span>
+		</div>
+	`;
+}
+
+for (const radio of aiInputModeRadios) {
+	radio.addEventListener("change", () => {
+		const selectedMode = radio.value;
+		if (aiEmailFieldsElement) {
+			aiEmailFieldsElement.style.display = selectedMode === "email" ? "flex" : "none";
+		}
+		if (aiTextInputElement) {
+			aiTextInputElement.placeholder = selectedMode === "email"
+				? "Paste full email body or message snippet here..."
+				: "Paste raw system or security log message here...";
+		}
+	});
+}
+
+if (aiClearButtonElement) {
+	aiClearButtonElement.addEventListener("click", () => {
+		if (aiSubjectInputElement) aiSubjectInputElement.value = "";
+		if (aiSenderInputElement) aiSenderInputElement.value = "";
+		if (aiTextInputElement) aiTextInputElement.value = "";
+		if (aiResultContentElement) {
+			aiResultContentElement.innerHTML = `
+				<div style="text-align: center; color: var(--greycolor); padding: 24px 12px;">
+					<p style="margin: 0; font-size: 14px; font-weight: bold;">Ready for Analysis</p>
+					<p style="margin: 6px 0 0; font-size: 12px; opacity: 0.8;">Paste an email or text snippet on the left and click "Analyze with AI".</p>
+				</div>
+			`;
+		}
+	});
+}
+
+if (aiAnalyzeButtonElement) {
+	aiAnalyzeButtonElement.addEventListener("click", async () => {
+		const selectedModeRadio = aiInputModeRadios.find(r => r.checked);
+		const mode = selectedModeRadio ? selectedModeRadio.value : "email";
+		const subject = aiSubjectInputElement ? aiSubjectInputElement.value.trim() : "";
+		const sender = aiSenderInputElement ? aiSenderInputElement.value.trim() : "";
+		const text = aiTextInputElement ? aiTextInputElement.value.trim() : "";
+
+		if (!text) {
+			if (aiResultContentElement) {
+				aiResultContentElement.innerHTML = `
+					<div style="text-align: center; color: var(--negativecolor); padding: 24px 12px;">
+						<p style="margin: 0; font-size: 14px; font-weight: bold;">Input Text Required</p>
+						<p style="margin: 6px 0 0; font-size: 12px;">Please paste an email message body or log snippet before analyzing.</p>
+					</div>
+				`;
+			}
+			return;
+		}
+
+		aiAnalyzeButtonElement.disabled = true;
+		aiAnalyzeButtonElement.textContent = "Analyzing...";
+
+		if (aiResultContentElement) {
+			aiResultContentElement.innerHTML = `
+				<div style="text-align: center; color: var(--greycolor); padding: 24px 12px;">
+					<p style="margin: 0; font-size: 14px; font-weight: bold;">Running MobileBERT AI Classification...</p>
+					<p style="margin: 6px 0 0; font-size: 12px;">Scanning text pattern indicators and embeddings.</p>
+				</div>
+			`;
+		}
+
+		try {
+			let result;
+			if (mode === "email") {
+				result = await analyzeEmailWithAi(subject, text, sender);
+			} else {
+				result = await analyzeLogWithAi(text);
+			}
+			renderAiAnalysisResult(result);
+		} catch (error) {
+			if (aiResultContentElement) {
+				aiResultContentElement.innerHTML = `
+					<div style="text-align: center; color: var(--negativecolor); padding: 24px 12px;">
+						<p style="margin: 0; font-size: 14px; font-weight: bold;">Analysis Failed</p>
+						<p style="margin: 6px 0 0; font-size: 12px;">Unable to reach backend AI service. Ensure backend main.py is running.</p>
+					</div>
+				`;
+			}
+		} finally {
+			aiAnalyzeButtonElement.disabled = false;
+			aiAnalyzeButtonElement.textContent = "Analyze with AI";
+		}
+	});
+}
+
 async function updateBottomStatus() {
 	if (!cpuStatusElement || !memoryStatusElement || !latencyStatusElement || !connectionStatusElement || !healthStatusElement || !logsProcessedStatusElement || !activeAlertsStatusElement) {
 		return;
@@ -1052,3 +1225,25 @@ loadRecentAlerts();
 connectLiveAlerts();
 updateConnectedDevices();
 setInterval(updateConnectedDevices, 60000);
+
+const liveUserMetaElement = document.getElementById("live-user-meta");
+
+function updateLiveClock() {
+	if (!liveUserMetaElement) {
+		return;
+	}
+	const now = new Date();
+	const day = now.getDate();
+	const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+	const month = months[now.getMonth()];
+	const year = now.getFullYear();
+
+	const hours = String(now.getHours()).padStart(2, "0");
+	const minutes = String(now.getMinutes()).padStart(2, "0");
+	const seconds = String(now.getSeconds()).padStart(2, "0");
+
+	liveUserMetaElement.innerHTML = `FULL ACCESS TIER<br />${day} ${month} ${year}, ${hours}:${minutes}:${seconds}`;
+}
+
+setInterval(updateLiveClock, 1000);
+updateLiveClock();

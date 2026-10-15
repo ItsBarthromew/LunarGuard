@@ -541,6 +541,42 @@ body {
 	margin-top: 16px;
 }
 
+.ai-page-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+	margin-top: 16px;
+}
+
+.ai-verdict-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px 16px;
+	border-radius: 999px;
+	font-family: "ClarendonBold", "Clarendon", serif;
+	font-size: 16px;
+	font-weight: 700;
+	color: #ffffff;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.ai-verdict-badge.status-1 {
+	background: #c33b31;
+	box-shadow: 0 4px 12px rgba(195, 59, 49, 0.3);
+}
+
+.ai-verdict-badge.status-2 {
+	background: #008000;
+	box-shadow: 0 4px 12px rgba(0, 128, 0, 0.3);
+}
+
+.ai-verdict-badge.status-3 {
+	background: #caa03f;
+	box-shadow: 0 4px 12px rgba(202, 160, 63, 0.3);
+}
+
 .scanner-stats {
 	display: grid;
 	gap: 16px;

@@ -12,10 +12,13 @@ from enum import IntEnum
 
 from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import webbrowser
 
 from logs import get_logs_processed_count, monitor_security_events
 from rules import ACTIVE_ALERT_SEVERITIES, generate_alerts, should_emit_alert
 from statuses import Statuses
+from ai import AI_ASSISTANT
 
 app = FastAPI(
     title=
@@ -31,6 +34,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 RECENT_LOGS = deque(maxlen=1000)
@@ -223,6 +230,7 @@ async def startup_event():
     loop = asyncio.get_running_loop()
     _start_log_monitor(loop)
     _start_antivirus_scanner(loop)
+    AI_ASSISTANT.load_model_in_background()
 
 
 @app.get("/health")
@@ -265,7 +273,7 @@ def get_network_status():
 @app.get("/network/devices", tags=["Network"])
 def get_connected_devices(
     refresh: bool = Query(default=False),
-    active_probe: bool = Query(default=True),
+    active_probe: bool = Query(default=False),
 ):
     """Discover connected LAN devices from local ARP cache."""
     ttl = 5 if refresh else 45
@@ -398,10 +406,45 @@ async def statuses_websocket(websocket: WebSocket):
         pass
 
 
+@app.get("/ai/status", tags=["AI Assistant"])
+def get_ai_status():
+    """Get status of MobileBERT AI assistant."""
+    return AI_ASSISTANT.get_status()
+
+
+@app.post("/ai/analyze-email", tags=["AI Assistant"])
+def analyze_email(
+    subject: str = Query(default=""),
+    body: str = Query(default=""),
+    sender: str | None = Query(default=None),
+    recipient: str | None = Query(default=None),
+):
+    """Analyze email content for potential phishing/threats using MobileBERT & heuristics."""
+    return AI_ASSISTANT.analyze_email(subject=subject, body=body, sender=sender, recipient=recipient)
+
+
+@app.post("/ai/analyze-log", tags=["AI Assistant"])
+def analyze_log(
+    msg: str = Query(..., description="Log message text"),
+    tag: str = Query(default="[SYS]", description="Log tag e.g. [AUTH], [SYS]"),
+):
+    """Analyze a log message for potential anomalies when users are away."""
+    return AI_ASSISTANT.analyze_log(log_msg=msg, tag=tag)
+
+
 def main():
     import uvicorn
 
     _ensure_admin_rights_windows()
+
+    def open_browser():
+        time.sleep(1.2)
+        try:
+            webbrowser.open("http://localhost:8000/")
+        except Exception:
+            pass
+
+    threading.Thread(target=open_browser, daemon=True).start()
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
 
 

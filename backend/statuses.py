@@ -264,10 +264,14 @@ class Statuses:
 
             hostname = ip_address
             try:
-                resolved_name = socket.gethostbyaddr(ip_address)[0]
-                if resolved_name:
-                    # Aggressively strip local domain suffixes (.fritz.box, .local, .lan, etc.)
-                    hostname = re.sub(r'\.(fritz\.box|local|lan|home|gateway)\.?$', '', resolved_name, flags=re.IGNORECASE)
+                orig_timeout = socket.getdefaulttimeout()
+                socket.setdefaulttimeout(0.05)
+                try:
+                    resolved_name = socket.gethostbyaddr(ip_address)[0]
+                    if resolved_name:
+                        hostname = re.sub(r'\.(fritz\.box|local|lan|home|gateway)\.?$', '', resolved_name, flags=re.IGNORECASE)
+                finally:
+                    socket.setdefaulttimeout(orig_timeout)
             except Exception:
                 pass
 

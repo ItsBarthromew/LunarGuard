@@ -1,0 +1,18 @@
+# LunarGuard Whitelisted Domains Database
+# Include trusted internal and external domains down to top-level domain (TLD)
+fnb.co.za
+google.com
+yourcompany.com
+microsoft.com
+github.com
+apple.com
+amazon.com
+office365.com
+sso.yourcompany.com
+azure.com
+google.co.za
+fnb.com
+absah.co.za
+standardbank.co.za
+nedbank.co.za
+capitecbank.co.za

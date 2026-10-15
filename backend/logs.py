@@ -193,7 +193,6 @@ def _emit_log(log_entry, on_log):
         return
 
     record_log_processed()
-    print(json.dumps(log_entry))
     if on_log:
         on_log(log_entry)
 
